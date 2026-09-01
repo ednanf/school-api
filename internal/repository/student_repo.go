@@ -19,7 +19,7 @@ func NewStudentRepository(db *sqlx.DB) domain.StudentRepository {
 	return &studentRepo{db: db}
 }
 
-// TODO: Add count to List and Batch methods
+// TODO: Add count to `List` and `Batch` methods
 
 func (r *studentRepo) Create(ctx context.Context, s *domain.Student) error {
 	query := `
@@ -63,6 +63,7 @@ func (r *studentRepo) List(ctx context.Context, limit int, offset int) ([]domain
 	return students, err
 }
 
+// TODO: Make the remaining methods
 func (r *studentRepo) Delete(ctx context.Context, id int) error {
 	_, err := r.db.ExecContext(ctx, "DELETE FROM students WHERE id = ?", id)
 	return err
