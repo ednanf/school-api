@@ -1,0 +1,26 @@
+services:
+  mariadb:
+    image: mariadb:latest
+    container_name: school_api
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: school_db
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: letmeinadmin # for local development only
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    restart: always
+    ports:
+      - "1025:1025" # SMTP server
+      - "1110:1110" # POP3 server
+      - "8025:8025" # Web UI
+
+volumes:
+  mariadb_data:
