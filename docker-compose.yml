@@ -1,7 +1,7 @@
 services:
   mariadb:
     image: mariadb:latest
-    container_name: school_api
+    container_name: school_api_db
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
