@@ -19,6 +19,8 @@ func NewStudentRepository(db *sqlx.DB) domain.StudentRepository {
 	return &studentRepo{db: db}
 }
 
+// TODO: Add count to List and Batch methods
+
 func (r *studentRepo) Create(ctx context.Context, s *domain.Student) error {
 	query := `
 		INSERT INTO students (first_name, last_name, email, class, created_at, updated_at)

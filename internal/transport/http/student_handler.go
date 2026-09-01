@@ -24,13 +24,44 @@ func NewStudentHandler(repo domain.StudentRepository, validate *validator.Valida
 // RegisterRoutes groups all student endpoints together, similar to an Express sub-router.
 func (h *StudentHandler) RegisterRoutes(r chi.Router) {
 	r.Route("/students", func(r chi.Router) {
+		r.Get("/", h.HandleList)
 		r.Post("/", h.HandleCreate)
 		r.Get("/{id}", h.HandleGetByID)
 	})
 }
 
 func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
-	sendJSON(w, http.StatusOK, map[string]string{"message": "Student list hit"})
+	// Parse query parameters from r.URL.Query()
+	limitStr := chi.URLParam(r, "limit")
+	offsetStr := chi.URLParam(r, "offset")
+
+	// Defaults
+	limit := 10
+	offset := 0
+
+	// Convert string query params to integers
+	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+		limit = l
+	}
+
+	// Limit cap to prevent someone from requesting 1 million rows at once
+	if limit > 100 {
+		limit = 100
+	}
+
+	if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
+		offset = o
+	}
+
+	// Call the repository with context and parsed pagination
+	students, err := h.repo.List(r.Context(), limit, offset)
+	if err != nil {
+		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to fetch students"})
+		return
+	}
+
+	// Returns [] instead of null if empty because studentRepo initializes an empty slice
+	sendJSON(w, http.StatusOK, students)
 }
 
 func (h *StudentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
