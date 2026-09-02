@@ -15,7 +15,7 @@ type Student struct {
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
 
-// StudentRepository defines the contract for database operations.
+// StudentRepository defines the contract for database operations (that happen in student_repo.go)
 type StudentRepository interface {
 	BatchCreate(ctx context.Context, students []*Student) error
 	BatchDelete(ctx context.Context, students []Student) error

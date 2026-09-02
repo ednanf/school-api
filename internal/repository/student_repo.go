@@ -65,8 +65,26 @@ func (r *studentRepo) List(ctx context.Context, limit int, offset int) ([]domain
 
 // TODO: Make the remaining methods
 func (r *studentRepo) Delete(ctx context.Context, id int) error {
-	_, err := r.db.ExecContext(ctx, "DELETE FROM students WHERE id = ?", id)
-	return err
+	query := "DELETE FROM students WHERE id = ?"
+
+	// Execute query
+	result, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	// Check if any row was actually deleted
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	// If 0 rows were affected, the ID did not exist in the db
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
 }
 
 func (r *studentRepo) Patch(ctx context.Context, s *domain.Student) error {

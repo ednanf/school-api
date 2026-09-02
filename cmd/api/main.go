@@ -61,7 +61,7 @@ func main() {
 	// Recoverer catches panics so your server doesn't crash from a single bad request
 	r.Use(middleware.Recoverer)
 
-	// Initialize repository and handler
+	// Initialize repository (struct that encapsulates all database access logic) and handler
 	studentRepo := repository.NewStudentRepository(db)
 	studentHandler := transportHttp.NewStudentHandler(studentRepo, validate)
 

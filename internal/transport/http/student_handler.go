@@ -1,7 +1,9 @@
 package http
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -27,7 +29,89 @@ func (h *StudentHandler) RegisterRoutes(r chi.Router) {
 		r.Get("/", h.HandleList)
 		r.Post("/", h.HandleCreate)
 		r.Get("/{id}", h.HandleGetByID)
+		r.Delete("/{id}", h.HandleDelete)
 	})
+}
+
+func (h *StudentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
+	// Initialize a Student struct
+	var student domain.Student
+
+	// Decode the JSON body directly into the struct pointer
+	if err := json.NewDecoder(r.Body).Decode(&student); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Validate struct rules using the injected validator instance
+	if err := h.validate.StructCtx(r.Context(), &student); err != nil {
+		if validationErrs, ok := err.(validator.ValidationErrors); ok {
+			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
+			return
+		}
+		sendError(w, http.StatusBadRequest, "Validation failed", nil)
+		return
+	}
+
+	// Save to MariaDB via the repository
+	if err := h.repo.Create(r.Context(), &student); err != nil {
+		sendError(w, http.StatusInternalServerError, "Failed to create student entry", nil)
+		return
+	}
+
+	// Return 201 Created with the full record (including generated ID and timestamps)
+	sendSuccess(w, http.StatusCreated, "Student created successfully", student)
+}
+
+func (h *StudentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+	// Extract and convert the URL param to int
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid student ID", nil)
+		return
+	}
+
+	err = h.repo.Delete(r.Context(), id)
+	if err != nil {
+		// 404 when student was not found
+		if errors.Is(err, sql.ErrNoRows) {
+			sendError(w, http.StatusNotFound, "Student not found", nil)
+			return
+		}
+
+		// 500 for DB connection or syntax errors
+		sendError(w, http.StatusInternalServerError, "Failed to delete student", nil)
+		return
+	}
+
+	// 204 status requires no JSON body, therefore, no `sendSuccess`
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *StudentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
+	// Get id from URL
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid student ID", nil)
+		return
+	}
+
+	// Search for student
+	student, err := h.repo.GetByID(r.Context(), id)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "Database error", nil)
+		return
+	}
+
+	// If the student does not exist
+	if student == nil {
+		sendError(w, http.StatusNotFound, "Student not found", nil)
+		return
+	}
+
+	sendSuccess(w, http.StatusOK, "Student retrieved successfully", student)
 }
 
 func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
@@ -56,78 +140,15 @@ func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	// Call the repository with context and parsed pagination
 	students, err := h.repo.List(r.Context(), limit, offset)
 	if err != nil {
-		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to fetch students"})
+		sendError(w, http.StatusInternalServerError, "Failed to fetch students", nil)
 		return
 	}
 
 	// Returns [] instead of null if empty because studentRepo initializes an empty slice
-	sendJSON(w, http.StatusOK, students)
-}
-
-func (h *StudentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
-	// Initialize a Student struct
-	var s domain.Student
-
-	// Decode the JSON body directly into the struct pointer
-	if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
-		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON payload"})
-		return
-	}
-
-	// Validate struct rules using the injected validator instance
-	if err := h.validate.StructCtx(r.Context(), &s); err != nil {
-		if validationErrs, ok := err.(validator.ValidationErrors); ok {
-			sendJSON(w, http.StatusUnprocessableEntity, map[string]any{
-				"error":   "Validation failed",
-				"details": formatValidationErrors(validationErrs),
-			})
-			return
-		}
-		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Validation failed"})
-		return
-	}
-
-	// Save to MariaDB via the repository
-	if err := h.repo.Create(r.Context(), &s); err != nil {
-		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to create student"})
-		return
-	}
-
-	// Return 201 Created with the full record (including generated ID and timestamps)
-	sendJSON(w, http.StatusCreated, s)
-}
-
-func (h *StudentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
-	// Get id from URL
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		sendJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid student ID"})
-		return
-	}
-
-	// Search for student
-	student, err := h.repo.GetByID(r.Context(), id)
-	if err != nil {
-		sendJSON(w, http.StatusInternalServerError, map[string]string{"error": "Database error"})
-		return
-	}
-
-	// If the student does not exist
-	if student == nil {
-		sendJSON(w, http.StatusNotFound, map[string]string{"error": "Student not found"})
-		return
-	}
-
-	sendJSON(w, http.StatusOK, student)
+	sendSuccess(w, http.StatusOK, "Fetched students successfully", students)
 }
 
 func (h *StudentHandler) HandlePatch(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	sendJSON(w, http.StatusOK, map[string]string{"message": "Patch student hit", "id": id})
-}
-
-func (h *StudentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	sendJSON(w, http.StatusOK, map[string]string{"message": "Delete student hit", "id": id})
+	sendSuccess(w, http.StatusOK, "Patch student hit", id)
 }
