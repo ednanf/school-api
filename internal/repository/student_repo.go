@@ -63,7 +63,6 @@ func (r *studentRepo) List(ctx context.Context, limit int, offset int) ([]domain
 	return students, err
 }
 
-// TODO: Make the remaining methods
 func (r *studentRepo) Delete(ctx context.Context, id int) error {
 	query := "DELETE FROM students WHERE id = ?"
 
@@ -87,14 +86,53 @@ func (r *studentRepo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *studentRepo) Patch(ctx context.Context, s *domain.Student) error {
-	return nil // Stub for now
+func (r *studentRepo) Update(ctx context.Context, id int, input domain.PatchStudentInput) (*domain.Student, error) {
+	// Fetch current record from DB
+	student, err := r.GetByID(ctx, id)
+	if err != nil {
+		return nil, err // Returns sql.ErrNoRows if 404
+	}
+
+	// Overwrite only fields provided in the PATCH payload
+	if input.FirstName != nil {
+		student.FirstName = *input.FirstName
+	}
+	if input.LastName != nil {
+		student.LastName = *input.LastName
+	}
+	if input.Email != nil {
+		student.Email = *input.Email
+	}
+	if input.Class != nil {
+		student.Class = *input.Class
+	}
+	student.UpdatedAt = time.Now()
+
+	// Execute static SQL query using sqlx named placeholders
+	query := `
+		UPDATE students SET
+			first_name = :first_name,
+			last_name = :last_name,
+			email = :email,
+			class = :class,
+			updated_at = :updated_at
+		WHERE id = :id
+	`
+
+	_, err = r.db.NamedExecContext(ctx, query, student)
+	if err != nil {
+		return nil, err
+	}
+
+	return student, nil
 }
 
+// TODO: Make BatchCreate
 func (r *studentRepo) BatchCreate(ctx context.Context, students []*domain.Student) error {
 	return nil // Stub for now
 }
 
+// TODO: Make BatchDelete
 func (r *studentRepo) BatchDelete(ctx context.Context, students []domain.Student) error {
 	return nil // Stub for now
 }

@@ -23,6 +23,7 @@ func NewStudentHandler(repo domain.StudentRepository, validate *validator.Valida
 	return &StudentHandler{repo: repo, validate: validator.New()}
 }
 
+// TODO: Evaluate abstracting this when expanding to teachers/executives
 // RegisterRoutes groups all student endpoints together, similar to an Express sub-router.
 func (h *StudentHandler) RegisterRoutes(r chi.Router) {
 	r.Route("/students", func(r chi.Router) {
@@ -30,6 +31,7 @@ func (h *StudentHandler) RegisterRoutes(r chi.Router) {
 		r.Post("/", h.HandleCreate)
 		r.Get("/{id}", h.HandleGetByID)
 		r.Delete("/{id}", h.HandleDelete)
+		r.Patch("/{id}", h.HandlePatch)
 	})
 }
 
@@ -149,6 +151,42 @@ func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *StudentHandler) HandlePatch(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	sendSuccess(w, http.StatusOK, "Patch student hit", id)
+	// Extract and convert the id to int
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid student ID", nil)
+		return
+	}
+
+	// Decode the request's body into the pointer-based PATCH DTO
+	var input domain.PatchStudentInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Validate optional field constraints (using omitempty rules)
+	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
+		if validationErrs, ok := err.(validator.ValidationErrors); ok {
+			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
+			return
+		}
+		sendError(w, http.StatusBadRequest, "Validation failed", nil)
+		return
+	}
+
+	// Perform the update in the db
+	updatedStudent, err := h.repo.Update(r.Context(), id, input)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			sendError(w, http.StatusNotFound, "Student not found", nil)
+			return
+		}
+		sendError(w, http.StatusInternalServerError, "Failed to update student", nil)
+		return
+	}
+
+	// Return 200 with the updated record
+	sendSuccess(w, http.StatusOK, "Student updated successfully", updatedStudent)
 }
