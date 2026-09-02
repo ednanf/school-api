@@ -127,6 +127,7 @@ func (r *studentRepo) Update(ctx context.Context, id int, input domain.PatchStud
 	return student, nil
 }
 
+// BatchCreate accepts 100 entries at most
 func (r *studentRepo) BatchCreate(ctx context.Context, students []domain.Student) ([]domain.Student, error) {
 	if len(students) == 0 {
 		return students, nil
@@ -174,6 +175,7 @@ func (r *studentRepo) BatchCreate(ctx context.Context, students []domain.Student
 	return students, nil
 }
 
+// BatchDelete accepts 100 entries at most
 func (r *studentRepo) BatchDelete(ctx context.Context, ids []int) (int64, error) {
 	if len(ids) == 0 {
 		return 0, nil

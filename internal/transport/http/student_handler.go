@@ -119,6 +119,7 @@ func (h *StudentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	sendSuccess(w, http.StatusOK, "Student retrieved successfully", student)
 }
 
+// FIXME: Pagination (limit) is not working
 func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	// Parse query parameters from r.URL.Query()
 	limitStr := chi.URLParam(r, "limit")
@@ -217,7 +218,7 @@ func (h *StudentHandler) HandleBatchCreate(w http.ResponseWriter, r *http.Reques
 	// Create the new students
 	createdStudents, err := h.repo.BatchCreate(r.Context(), input.Students)
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "Failed to create students in batch", nil)
+		sendError(w, http.StatusInternalServerError, "Failed to create students", nil)
 		return
 	}
 
