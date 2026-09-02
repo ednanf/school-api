@@ -38,6 +38,70 @@ func (h *StudentHandler) Routes() chi.Router {
 	return r
 }
 
+func (h *StudentHandler) HandleBatchCreate(w http.ResponseWriter, r *http.Request) {
+	// Instantiate a variable to hold the payload according to the DTO (for validation and structure)
+	var input domain.BatchCreateInput
+
+	// Decode the body and store into the variable
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Validate the payload
+	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
+		if validationErrs, ok := err.(validator.ValidationErrors); ok {
+			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
+			return
+		}
+		sendError(w, http.StatusBadRequest, "Validation failed", nil)
+		return
+	}
+
+	// Create the new students
+	createdStudents, err := h.repo.BatchCreate(r.Context(), input.Students)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "Failed to create students", nil)
+		return
+	}
+
+	// Return 201 with the created students
+	sendSuccess(w, http.StatusCreated, "Batch creation successful", createdStudents)
+}
+
+func (h *StudentHandler) HandleBatchDelete(w http.ResponseWriter, r *http.Request) {
+	// Instantiate a variable to hold the IDs to be deleted
+	var input domain.BatchDeleteInput
+
+	// Decode the body and store in the variable
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Validate the payload
+	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
+		if validationErrs, ok := err.(validator.ValidationErrors); ok {
+			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
+			return
+		}
+		sendError(w, http.StatusBadRequest, "Validation failed", nil)
+		return
+	}
+
+	// BatchDelete will return the number of rows affected by the query
+	deletedCount, err := h.repo.BatchDelete(r.Context(), input.IDs)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "Failed to delete students in batch", nil)
+		return
+	}
+
+	// Send a simple 200 with the number of deleted students
+	sendSuccess(w, http.StatusOK, "Batch deletion successful", map[string]any{
+		"deleted_count": deletedCount,
+	})
+}
+
 func (h *StudentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	// Initialize a Student struct
 	var student domain.Student
@@ -193,68 +257,4 @@ func (h *StudentHandler) HandlePatch(w http.ResponseWriter, r *http.Request) {
 
 	// Return 200 with the updated record
 	sendSuccess(w, http.StatusOK, "Student updated successfully", updatedStudent)
-}
-
-func (h *StudentHandler) HandleBatchCreate(w http.ResponseWriter, r *http.Request) {
-	// Instantiate a variable to hold the payload according to the DTO (for validation and structure)
-	var input domain.BatchCreateInput
-
-	// Decode the body and store into the variable
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
-		return
-	}
-
-	// Validate the payload
-	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
-		if validationErrs, ok := err.(validator.ValidationErrors); ok {
-			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
-			return
-		}
-		sendError(w, http.StatusBadRequest, "Validation failed", nil)
-		return
-	}
-
-	// Create the new students
-	createdStudents, err := h.repo.BatchCreate(r.Context(), input.Students)
-	if err != nil {
-		sendError(w, http.StatusInternalServerError, "Failed to create students", nil)
-		return
-	}
-
-	// Return 201 with the created students
-	sendSuccess(w, http.StatusCreated, "Batch creation successful", createdStudents)
-}
-
-func (h *StudentHandler) HandleBatchDelete(w http.ResponseWriter, r *http.Request) {
-	// Instantiate a variable to hold the IDs to be deleted
-	var input domain.BatchDeleteInput
-
-	// Decode the body and store in the variable
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
-		return
-	}
-
-	// Validate the payload
-	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
-		if validationErrs, ok := err.(validator.ValidationErrors); ok {
-			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
-			return
-		}
-		sendError(w, http.StatusBadRequest, "Validation failed", nil)
-		return
-	}
-
-	// BatchDelete will return the number of rows affected by the query
-	deletedCount, err := h.repo.BatchDelete(r.Context(), input.IDs)
-	if err != nil {
-		sendError(w, http.StatusInternalServerError, "Failed to delete students in batch", nil)
-		return
-	}
-
-	// Send a simple 200 with the number of deleted students
-	sendSuccess(w, http.StatusOK, "Batch deletion successful", map[string]any{
-		"deleted_count": deletedCount,
-	})
 }
