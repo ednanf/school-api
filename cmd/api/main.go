@@ -67,7 +67,7 @@ func main() {
 
 	// Mount the routes under a versioned API prefix
 	r.Route("/api/v1", func(r chi.Router) {
-		studentHandler.RegisterRoutes(r)
+		r.Mount("/students", studentHandler.Routes())
 	})
 
 	log.Printf("[SYSTEM] Server running on port %s...", port)
