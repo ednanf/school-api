@@ -23,11 +23,12 @@ func NewStudentRepository(db *sqlx.DB) domain.StudentRepository {
 
 func (r *studentRepo) Create(ctx context.Context, s *domain.Student) error {
 	query := `
-		INSERT INTO students (first_name, last_name, email, class, created_at, updated_at)
-		VALUES (:first_name, :last_name, :email, :class, :created_at, :updated_at)
-	`
-	s.CreatedAt = time.Now()
-	s.UpdatedAt = s.CreatedAt
+        INSERT INTO students (first_name, last_name, email, class_id, created_at, updated_at)
+        VALUES (:first_name, :last_name, :email, :class_id, :created_at, :updated_at)
+    `
+	now := time.Now()
+	s.CreatedAt = now
+	s.UpdatedAt = now
 
 	result, err := r.db.NamedExecContext(ctx, query, s)
 	if err != nil {
@@ -110,21 +111,21 @@ func (r *studentRepo) Update(ctx context.Context, id int, input domain.PatchStud
 	if input.Email != nil {
 		student.Email = *input.Email
 	}
-	if input.Class != nil {
-		student.Class = *input.Class
+	if input.ClassID != nil {
+		student.ClassID = *input.ClassID
 	}
 	student.UpdatedAt = time.Now()
 
 	// Execute static SQL query using sqlx named placeholders
 	query := `
-		UPDATE students SET
-			first_name = :first_name,
-			last_name = :last_name,
-			email = :email,
-			class = :class,
-			updated_at = :updated_at
-		WHERE id = :id
-	`
+        UPDATE students SET
+            first_name = :first_name,
+            last_name = :last_name,
+            email = :email,
+            class_id = :class_id,
+            updated_at = :updated_at
+        WHERE id = :id
+    `
 
 	_, err = r.db.NamedExecContext(ctx, query, student)
 	if err != nil {
@@ -140,41 +141,35 @@ func (r *studentRepo) BatchCreate(ctx context.Context, students []domain.Student
 		return students, nil
 	}
 
-	// Begin SQL Transaction
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	// Defer rollback: if tx.Commit() succeeds later, this becomes a safe no-op
 	defer tx.Rollback()
 
 	now := time.Now()
 	query := `
-		INSERT INTO students (first_name, last_name, email, class, created_at, updated_at)
-		VALUES (:first_name, :last_name, :email, :class, :created_at, :updated_at)
-	`
+        INSERT INTO students (first_name, last_name, email, class_id, created_at, updated_at)
+        VALUES (:first_name, :last_name, :email, :class_id, :created_at, :updated_at)
+    `
 
-	// Insert records sequentially inside the transaction
 	for i := range students {
 		students[i].CreatedAt = now
 		students[i].UpdatedAt = now
 
 		res, err := tx.NamedExecContext(ctx, query, students[i])
 		if err != nil {
-			return nil, err // Aborts loop and triggers rollback via defer
+			return nil, err
 		}
 
-		// Ask for the auto-increment ID generated for this specific row
 		id, err := res.LastInsertId()
 		if err != nil {
 			return nil, err
 		}
 
-		// Writes the generated ID directly back into the struct at position `i`
 		students[i].ID = int(id)
 	}
 
-	// Commit all inserts at once
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}

@@ -22,7 +22,7 @@ type Student struct {
 	FirstName string    `json:"first_name" db:"first_name" validate:"required,min=2,max=50"`
 	LastName  string    `json:"last_name" db:"last_name" validate:"required,min=2,max=50"`
 	Email     string    `json:"email" db:"email" validate:"required,email"`
-	Class     string    `json:"class" db:"class" validate:"required,alphanum,max=20"`
+	ClassID   int       `json:"class_id" db:"class_id" validate:"required,gt=0"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
@@ -32,7 +32,7 @@ type PatchStudentInput struct {
 	FirstName *string `json:"first_name" validate:"omitempty,min=2,max=100"`
 	LastName  *string `json:"last_name" validate:"omitempty,min=2,max=100"`
 	Email     *string `json:"email" validate:"omitempty,email"`
-	Class     *string `json:"class" validate:"omitempty"`
+	ClassID   *int    `json:"class_id" validate:"omitempty,gt=0"`
 }
 
 // BatchCreateInput defines the JSON payload for inserting multiple students
