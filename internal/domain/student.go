@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// StudentRepository defines the contract for database operations (that happen in student_repo.go)
+// StudentRepository defines the contract for database operations (in student_repo.go)
 type StudentRepository interface {
 	BatchCreate(ctx context.Context, students []Student) ([]Student, error)
 	BatchDelete(ctx context.Context, ids []int) (int64, error)
