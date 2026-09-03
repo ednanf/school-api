@@ -183,15 +183,15 @@ func (h *StudentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	sendSuccess(w, http.StatusOK, "Student retrieved successfully", student)
 }
 
-// FIXME: Pagination (limit) is not working
 func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
-	// Parse query parameters from r.URL.Query()
-	limitStr := chi.URLParam(r, "limit")
-	offsetStr := chi.URLParam(r, "offset")
+	// Parse query parameters correctly from r.URL.Query()
+	queryParams := r.URL.Query()
+	limitStr := queryParams.Get("limit")
+	pageStr := queryParams.Get("page")
 
 	// Defaults
 	limit := 10
-	offset := 0
+	page := 1
 
 	// Convert string query params to integers
 	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
@@ -203,9 +203,12 @@ func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 		limit = 100
 	}
 
-	if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
-		offset = o
+	if p, err := strconv.Atoi(pageStr); err == nil && p >= 0 {
+		page = p
 	}
+
+	// Calculate the database offset derived from page number
+	offset := (page - 1) * limit
 
 	// Call the repository with context and parsed pagination
 	students, err := h.repo.List(r.Context(), limit, offset)

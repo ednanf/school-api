@@ -57,9 +57,16 @@ func (r *studentRepo) GetByID(ctx context.Context, id int) (*domain.Student, err
 }
 
 func (r *studentRepo) List(ctx context.Context, limit int, offset int) ([]domain.Student, error) {
+	// Make an empty slice to hold students
 	students := make([]domain.Student, 0)
+
+	// Get all columns from the table students, ordered by their ID, and limited to a certain number
 	query := "SELECT * FROM students ORDER BY id LIMIT ? OFFSET ?"
+
+	// Execute the db operation
 	err := r.db.SelectContext(ctx, &students, query, limit, offset)
+
+	// Return the results to be used
 	return students, err
 }
 
