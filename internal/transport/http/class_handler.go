@@ -8,13 +8,13 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// Class handler holds routes
+// ClassHandler contains `repo` with a way to communicate with the database and the pointer to the validator instantiated once in `main.go`
 type ClassHandler struct {
 	repo     domain.ClassRepository
 	validate *validator.Validate
 }
 
-// Constructor
+// NewClassHandler is a constructor that returns a pointer to a ClassHandler struct, initializing it with the injected repository and validator dependencies
 func NewClassHandler(repo domain.ClassRepository, validate *validator.Validate) *ClassHandler {
 	return &ClassHandler{repo: repo, validate: validate}
 }

@@ -10,11 +10,12 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// studentRepo stores the db connnection and the repository methods attached to it
 type studentRepo struct {
 	db *sqlx.DB
 }
 
-// Constructor
+// NewStudentRepository receives a pointer to the database pool and returnts a domain.StudentRepository, guaranteeing studentRepo implements all required methods
 func NewStudentRepository(db *sqlx.DB) domain.StudentRepository {
 	return &studentRepo{db: db}
 }

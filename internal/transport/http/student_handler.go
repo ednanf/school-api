@@ -12,13 +12,13 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// StudentHandler holds routes
+// StudentHandler contains `repo` with a way to communicate with the database and the pointer to the validator instantiated once in `main.go`
 type StudentHandler struct {
 	repo     domain.StudentRepository
 	validate *validator.Validate
 }
 
-// Constructor
+// NewStudentHandler is a constructor that returns a pointer to a StudentHandler struct, initializing it with the injected repository and validator dependencies
 func NewStudentHandler(repo domain.StudentRepository, validate *validator.Validate) *StudentHandler {
 	return &StudentHandler{repo: repo, validate: validate}
 }
