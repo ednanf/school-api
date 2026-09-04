@@ -12,7 +12,7 @@ type classRepo struct {
 	db *sqlx.DB
 }
 
-// NewClassRepository receives a pointer to the database pool and returnts a domain.ClassRepository, guaranteeing classRepo implements all required methods
+// NewClassRepository receives a pointer to the database connection pool and returnts a domain.ClassRepository, guaranteeing classRepo implements all required methods
 func NewClassRepository(db *sqlx.DB) domain.ClassRepository {
 	return &classRepo{db: db}
 }

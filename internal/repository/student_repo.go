@@ -15,7 +15,7 @@ type studentRepo struct {
 	db *sqlx.DB
 }
 
-// NewStudentRepository receives a pointer to the database pool and returnts a domain.StudentRepository, guaranteeing studentRepo implements all required methods
+// NewStudentRepository receives a pointer to the database connection pool and returnts a domain.StudentRepository, guaranteeing studentRepo implements all required methods
 func NewStudentRepository(db *sqlx.DB) domain.StudentRepository {
 	return &studentRepo{db: db}
 }
