@@ -11,6 +11,7 @@ type classRepo struct {
 	db *sqlx.DB
 }
 
+// Constructor
 func NewClassRepository(db *sqlx.DB) domain.ClassRepository {
 	return &classRepo{db: db}
 }

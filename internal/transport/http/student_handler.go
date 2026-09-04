@@ -20,7 +20,7 @@ type StudentHandler struct {
 
 // Constructor
 func NewStudentHandler(repo domain.StudentRepository, validate *validator.Validate) *StudentHandler {
-	return &StudentHandler{repo: repo, validate: validator.New()}
+	return &StudentHandler{repo: repo, validate: validate}
 }
 
 // Route paths

@@ -8,10 +8,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// TODO: create handlers
-// TODO: implement the route in main.go
-
-// Student handler holds routes
+// Class handler holds routes
 type ClassHandler struct {
 	repo     domain.ClassRepository
 	validate *validator.Validate
@@ -19,7 +16,7 @@ type ClassHandler struct {
 
 // Constructor
 func NewClassHandler(repo domain.ClassRepository, validate *validator.Validate) *ClassHandler {
-	return &ClassHandler{repo: repo, validate: validator.New()}
+	return &ClassHandler{repo: repo, validate: validate}
 }
 
 // Route paths
