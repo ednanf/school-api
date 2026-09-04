@@ -12,7 +12,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// StudentHandler holds routes.
+// StudentHandler holds routes
 type StudentHandler struct {
 	repo     domain.StudentRepository
 	validate *validator.Validate
@@ -24,15 +24,15 @@ func NewStudentHandler(repo domain.StudentRepository, validate *validator.Valida
 }
 
 // Route paths
-func (h *StudentHandler) Routes() chi.Router {
+func (h *StudentHandler) StudentRoutes() chi.Router {
 	r := chi.NewRouter()
 
 	r.Get("/", h.HandleList)
 	r.Post("/", h.HandleCreate)
-	r.Post("/batch", h.HandleBatchCreate)
 	r.Delete("/batch", h.HandleBatchDelete)
-	r.Get("/{id}", h.HandleGetByID)
+	r.Post("/batch", h.HandleBatchCreate)
 	r.Delete("/{id}", h.HandleDelete)
+	r.Get("/{id}", h.HandleGetByID)
 	r.Patch("/{id}", h.HandlePatch)
 
 	return r

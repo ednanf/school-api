@@ -38,7 +38,7 @@ type PatchStudentInput struct {
 // BatchCreateInput defines the JSON payload for inserting multiple students
 type BatchCreateInput struct {
 	// `dive` tells validator to iterate into the slice and run field validation on each individual element
-	Students []Student `json:"students" validate:"required,min=1,max=100,dive"`
+	Students []Student `json:"students" validate:"required,min=1,max=2000,dive"`
 }
 
 // BatchDeleteInput defines the JSON payload for deleting multiple students by ID

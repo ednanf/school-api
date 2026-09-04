@@ -9,8 +9,8 @@ import (
 type ClassRepository interface {
 	Create(ctx context.Context, class *Class) error
 	Delete(ctx context.Context, id int) error
-	GetById(ctx context.Context, id int) (*Student, error)
-	List(ctx context.Context, limit int, offset int) ([]Student, error)
+	GetById(ctx context.Context, id int) (*Class, error)
+	List(ctx context.Context, limit int, offset int) ([]Class, error)
 	Update(ctx context.Context, id int, input PatchClassInput) (*Class, error)
 }
 
