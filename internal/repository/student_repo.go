@@ -42,6 +42,7 @@ func (r *studentRepo) Create(ctx context.Context, s *domain.Student) error {
 	}
 
 	s.ID = int(id)
+
 	return nil
 }
 
