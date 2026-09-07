@@ -103,7 +103,7 @@ func (h *StudentHandler) HandleBatchDelete(w http.ResponseWriter, r *http.Reques
 
 	// Send a simple 200 with the number of deleted students
 	sendSuccess(w, http.StatusOK, "Batch deletion successful", map[string]any{
-		"deleted_count": deletedCount,
+		"total": deletedCount,
 	})
 }
 
