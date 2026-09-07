@@ -39,3 +39,32 @@ CREATE TABLE IF NOT EXISTS students (
     updated_at DATETIME NOT NULL,
     CONSTRAINT fk_students_class FOREIGN KEY (class_id) REFERENCES classes(id)
 ) AUTO_INCREMENT=100;
+
+-- Create `teachers` table
+CREATE TABLE IF NOT EXISTS teachers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL
+) AUTO_INCREMENT=100;
+
+-- Create `teacher_assignments` table (The Junction)
+CREATE TABLE IF NOT EXISTS teacher_assignments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    teacher_id INT NOT NULL,
+    class_id INT NOT NULL,
+    subject_id INT NOT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+
+    -- Foreign Keys
+    CONSTRAINT fk_assignment_teacher FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE,
+    CONSTRAINT fk_assignment_class FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+    CONSTRAINT fk_assignment_subject FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
+
+    -- Prevents assigning two different teachers to teach the exact same subject to the exact same class
+    -- (Remove this UNIQUE KEY if the school allows co-teaching)
+    UNIQUE KEY uq_class_subject (class_id, subject_id)
+);
