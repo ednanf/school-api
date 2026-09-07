@@ -25,6 +25,7 @@ type Class struct {
 
 // PatchClassInput defines the JSON payload for inserting one class
 type PatchClassInput struct {
-	Grade  int    `json:"grade" db:"grade" validate:"required,min=1,max=8"`
-	Letter string `json:"letter" db:"letter" validate:"required,oneof=A B"`
+	// Since the types are primitives, pointers must be used to avoid overwriting nil values. Change "required" to "omitempty" because the values are optional
+	Grade  *int    `json:"grade" db:"grade" validate:"omitempty,min=1,max=8"`
+	Letter *string `json:"letter" db:"letter" validate:"omitempty,oneof=A B"`
 }
