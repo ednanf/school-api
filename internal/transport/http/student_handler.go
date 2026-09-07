@@ -65,6 +65,7 @@ func (h *StudentHandler) HandleBatchCreate(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Map the values to a PaginatedResult struct
 	result := domain.PaginatedResult[domain.Student]{
 		Total: total,
 		Items: createdStudents,
