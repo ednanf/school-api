@@ -29,6 +29,7 @@ type Student struct {
 
 // PatchStudentInput defines the JSON payload for inserting one student
 type PatchStudentInput struct {
+	// Since the types are primitives, pointers must be used to avoid overwriting nil values. Change "required" to "omitempty" because the values are optional
 	FirstName *string `json:"first_name" validate:"omitempty,min=2,max=100"`
 	LastName  *string `json:"last_name" validate:"omitempty,min=2,max=100"`
 	Email     *string `json:"email" validate:"omitempty,email"`
