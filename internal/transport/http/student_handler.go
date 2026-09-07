@@ -211,14 +211,20 @@ func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	offset := (page - 1) * limit
 
 	// Call the repository with context and parsed pagination
-	students, err := h.repo.List(r.Context(), limit, offset)
+	students, total, err := h.repo.List(r.Context(), limit, offset)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to fetch students", nil)
 		return
 	}
 
+	// Map the values to a PaginatedResult struct
+	result := domain.PaginatedResult[domain.Student]{
+		Total: total,
+		Items: students,
+	}
+
 	// Returns [] instead of null if empty because studentRepo initializes an empty slice
-	sendSuccess(w, http.StatusOK, "Fetched students successfully", students)
+	sendSuccess(w, http.StatusOK, "Fetched students successfully", result)
 }
 
 func (h *StudentHandler) HandlePatch(w http.ResponseWriter, r *http.Request) {
