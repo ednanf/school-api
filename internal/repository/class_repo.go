@@ -21,8 +21,6 @@ func NewClassRepository(db *sqlx.DB) domain.ClassRepository {
 	return &classRepo{db: db}
 }
 
-// TODO: Add count to `List` method
-
 func (r *classRepo) Create(ctx context.Context, c *domain.Class) error {
 	query := `
 		INSERT INTO classes (grade, letter, created_at, updated_at)
@@ -96,9 +94,17 @@ func (r *classRepo) GetById(ctx context.Context, id int) (*domain.Class, error) 
 	return &c, nil
 }
 
-func (r *classRepo) List(ctx context.Context, limit int, offset int) ([]domain.Class, error) {
+func (r *classRepo) List(ctx context.Context, limit int, offset int) ([]domain.Class, int, error) {
 	// Make an empty slice to hold classes
 	classes := make([]domain.Class, 0)
+
+	var total int
+	countQuery := "SELECT COUNT(*) FROM classes"
+
+	// Get the total count in the table
+	if err := r.db.GetContext(ctx, &total, countQuery); err != nil {
+		return nil, 0, err
+	}
 
 	// Get all columns from the table classes, ordered by thei ID, limited to a certain number
 	query := "SELECT * FROM classes ORDER BY id LIMIT ? OFFSET ?"
@@ -107,7 +113,7 @@ func (r *classRepo) List(ctx context.Context, limit int, offset int) ([]domain.C
 	err := r.db.SelectContext(ctx, &classes, query, limit, offset)
 
 	// Return the results to be used
-	return classes, err
+	return classes, total, err
 }
 
 func (r *classRepo) Update(ctx context.Context, id int, input domain.PatchClassInput) (*domain.Class, error) {
