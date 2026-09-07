@@ -20,8 +20,6 @@ func NewStudentRepository(db *sqlx.DB) domain.StudentRepository {
 	return &studentRepo{db: db}
 }
 
-// TODO: Add count to `List` and `Batch` methods
-
 // BatchCreate accepts 100 entries at most
 func (r *studentRepo) BatchCreate(ctx context.Context, students []domain.Student) ([]domain.Student, int, error) {
 	if len(students) == 0 {
