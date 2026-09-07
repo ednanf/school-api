@@ -23,15 +23,15 @@ func NewStudentRepository(db *sqlx.DB) domain.StudentRepository {
 // TODO: Add count to `List` and `Batch` methods
 
 // BatchCreate accepts 100 entries at most
-func (r *studentRepo) BatchCreate(ctx context.Context, students []domain.Student) ([]domain.Student, error) {
+func (r *studentRepo) BatchCreate(ctx context.Context, students []domain.Student) ([]domain.Student, int, error) {
 	if len(students) == 0 {
-		return students, nil
+		return students, 0, nil
 	}
 
 	// Initiate a db transaction with the context
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	// Should any error occur, roll back the database
@@ -43,6 +43,8 @@ func (r *studentRepo) BatchCreate(ctx context.Context, students []domain.Student
         VALUES (:first_name, :last_name, :email, :class_id, :created_at, :updated_at)
     `
 
+	total := 0
+
 	// Loop the student slice argument
 	for i := range students {
 		// Add timestamps
@@ -52,25 +54,27 @@ func (r *studentRepo) BatchCreate(ctx context.Context, students []domain.Student
 		// Execute the database operation in the ongoing transaction
 		res, err := tx.NamedExecContext(ctx, query, students[i])
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		// Retrieve the newly inserted entry's id to be able to send a response
 		id, err := res.LastInsertId()
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		// Assign the received id to the entry in order to show in the response
 		students[i].ID = int(id)
+
+		total++
 	}
 
 	// Commit the database changes
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return students, nil
+	return students, total, nil
 }
 
 // BatchDelete accepts 100 entries at most

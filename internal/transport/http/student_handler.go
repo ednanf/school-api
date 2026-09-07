@@ -59,14 +59,19 @@ func (h *StudentHandler) HandleBatchCreate(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Create the new students
-	createdStudents, err := h.repo.BatchCreate(r.Context(), input.Students)
+	createdStudents, total, err := h.repo.BatchCreate(r.Context(), input.Students)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to create students", nil)
 		return
 	}
 
+	result := domain.PaginatedResult[domain.Student]{
+		Total: total,
+		Items: createdStudents,
+	}
+
 	// Return 201 with the created students
-	sendSuccess(w, http.StatusCreated, "Batch creation successful", createdStudents)
+	sendSuccess(w, http.StatusCreated, "Batch creation successful", result)
 }
 
 func (h *StudentHandler) HandleBatchDelete(w http.ResponseWriter, r *http.Request) {
