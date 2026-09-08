@@ -68,10 +68,14 @@ func main() {
 	classRepo := repository.NewClassRepository(db)
 	classHandler := transportHttp.NewClassHandler(classRepo, validate)
 
+	subjectRepo := repository.NewSubjectRepository(db)
+	subjectHandler := transportHttp.NewSubjectHandler(subjectRepo, validate)
+
 	// Mount the routes under a versioned API prefix
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Mount("/students", studentHandler.StudentRoutes())
 		r.Mount("/classes", classHandler.ClassRoutes())
+		r.Mount("/subjects", subjectHandler.SubjectRoutes())
 	})
 
 	log.Printf("[SYSTEM] Server running on port %s...", port)
