@@ -100,8 +100,27 @@ func (h *ClassHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ClassHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	sendSuccess(w, http.StatusOK, "GetById hit", id)
+	// Get id from URL
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid class ID", nil)
+		return
+	}
+
+	// Search for class
+	class, err := h.repo.GetById(r.Context(), id)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "Database error", nil)
+	}
+
+	// If the student does not exist
+	if class == nil {
+		sendError(w, http.StatusNotFound, "Class not found", nil)
+		return
+	}
+
+	sendSuccess(w, http.StatusOK, "Class retrieved successfully", class)
 }
 
 func (h *ClassHandler) HandleList(w http.ResponseWriter, r *http.Request) {
