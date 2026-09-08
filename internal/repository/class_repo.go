@@ -11,7 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// classRepo stores the db connnection and the repository methods attached to it
+// classRepo stores the db connnection and has the repository methods attached to it
 type classRepo struct {
 	db *sqlx.DB
 }
