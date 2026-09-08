@@ -17,8 +17,8 @@ type ClassRepository interface {
 // Class defines the shape of Class struct in the database
 type Class struct {
 	ID        int       `json:"id" db:"id"`
-	Grade     int       `json:"grade" db:"grade" validate:"required,min=1,max=8"`
-	Letter    string    `json:"letter" db:"letter" validate:"required,oneof=A B"`
+	Grade     int       `json:"grade" db:"grade" validate:"required,min=1,max=9"`
+	Letter    string    `json:"letter" db:"letter" validate:"required,oneof=A B C D"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
@@ -26,6 +26,6 @@ type Class struct {
 // PatchClassInput defines the JSON payload for inserting one class
 type PatchClassInput struct {
 	// Since the types are primitives, pointers must be used to avoid overwriting nil values. Change "required" to "omitempty" because the values are optional
-	Grade  *int    `json:"grade" db:"grade" validate:"omitempty,min=1,max=8"`
-	Letter *string `json:"letter" db:"letter" validate:"omitempty,oneof=A B"`
+	Grade  *int    `json:"grade" db:"grade" validate:"omitempty,min=1,max=9"`
+	Letter *string `json:"letter" db:"letter" validate:"omitempty,oneof=A B C D"`
 }
