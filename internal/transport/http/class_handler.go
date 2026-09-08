@@ -124,9 +124,85 @@ func (h *ClassHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ClassHandler) HandleList(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "List hit", nil)
+	// Parse query parameters correctly from r.URL.Query()
+	queryParams := r.URL.Query()
+	limitStr := queryParams.Get("limit")
+	pageStr := queryParams.Get("page")
+
+	// Defaults
+	limit := 20
+	page := 1
+
+	// Convert string query params to integers
+	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+		limit = l
+	}
+
+	if p, err := strconv.Atoi(pageStr); err == nil && p >= 0 {
+		page = p
+	}
+
+	// Limit cap to prevent abuse
+	if limit > 100 {
+		limit = 100
+	}
+
+	// Calculate the database offset derived from page number
+	offset := (page - 1) * limit
+
+	// Call the repository with context and parsed pagination
+	classes, total, err := h.repo.List(r.Context(), limit, offset)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "Failed to fetch students", nil)
+		return
+	}
+
+	// Map the values to a PaginatedResult struct
+	result := domain.PaginatedResult[domain.Class]{
+		Total: total,
+		Items: classes,
+	}
+
+	sendSuccess(w, http.StatusOK, "Fetched classes successfully", result)
 }
 
 func (h *ClassHandler) HandlePatch(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "Patch hit", nil)
+	// Extract and convert the id to int
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid class ID", nil)
+		return
+	}
+
+	// Decode the request's body into the pointer-based PATCH DTO
+	var input domain.PatchClassInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Validate optional field constraints (using omitempty rules)
+	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
+		if validationErrs, ok := err.(validator.ValidationErrors); ok {
+			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
+			return
+		}
+		sendError(w, http.StatusBadRequest, "Validation failed", nil)
+		return
+	}
+
+	// Perform the update in the db
+	updatedClass, err := h.repo.Update(r.Context(), id, input)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			sendError(w, http.StatusNotFound, "Class not found", nil)
+			return
+		}
+		fmt.Printf("[ERROR] %v\n", err)
+		sendError(w, http.StatusInternalServerError, "Failed to update the class", nil)
+		return
+	}
+
+	sendSuccess(w, http.StatusOK, "Class updated successfully", updatedClass)
 }

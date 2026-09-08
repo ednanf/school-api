@@ -112,7 +112,7 @@ func (h *StudentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	// Initialize a Student struct
 	var student domain.Student
 
-	// Decode the JSON body directly into the struct pointer
+	// Decode the JSON body directly into the struct via pointer
 	if err := json.NewDecoder(r.Body).Decode(&student); err != nil {
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
 		return
@@ -128,7 +128,7 @@ func (h *StudentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Save to MariaDB via the repository
+	// Save to the db via the repository
 	if err := h.repo.Create(r.Context(), &student); err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to create student entry", nil)
 		return
@@ -147,15 +147,15 @@ func (h *StudentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.repo.Delete(r.Context(), id)
-	if err != nil {
+	// Execute the db operation
+	if err = h.repo.Delete(r.Context(), id); err != nil {
 		// 404 when student was not found
 		if errors.Is(err, sql.ErrNoRows) {
 			sendError(w, http.StatusNotFound, "Student not found", nil)
 			return
 		}
 
-		// 500 for DB connection or syntax errors
+		// 500 for db connection or syntax errors
 		sendError(w, http.StatusInternalServerError, "Failed to delete student", nil)
 		return
 	}
@@ -204,7 +204,7 @@ func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 		limit = l
 	}
 
-	// Limit cap to prevent someone from requesting 1 million rows at once
+	// Limit cap to prevent abuse
 	if limit > 100 {
 		limit = 100
 	}

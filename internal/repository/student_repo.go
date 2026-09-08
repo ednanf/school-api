@@ -20,7 +20,7 @@ func NewStudentRepository(db *sqlx.DB) domain.StudentRepository {
 	return &studentRepo{db: db}
 }
 
-// BatchCreate accepts 100 entries at most
+// BatchCreate receives a context and a slice of type Student. It accepts 1000 entries at most. It returns a slice containing all created students, the total amount of created entries and errors
 func (r *studentRepo) BatchCreate(ctx context.Context, students []domain.Student) ([]domain.Student, int, error) {
 	if len(students) == 0 {
 		return students, 0, nil
@@ -75,7 +75,7 @@ func (r *studentRepo) BatchCreate(ctx context.Context, students []domain.Student
 	return students, total, nil
 }
 
-// BatchDelete accepts 100 entries at most
+// BatchDelete receives a context and a slice of ids of type int. It accepts a maximum of 100 ids. It returns a total and errors
 func (r *studentRepo) BatchDelete(ctx context.Context, ids []int) (int64, error) {
 	if len(ids) == 0 {
 		return 0, nil
@@ -177,6 +177,7 @@ func (r *studentRepo) GetByID(ctx context.Context, id int) (*domain.Student, err
 	return &s, nil
 }
 
+// List takes a context, limit and offset and returns a slice, a total and errors
 func (r *studentRepo) List(ctx context.Context, limit int, offset int) ([]domain.Student, int, error) {
 	// Make an empty slice to hold students
 	students := make([]domain.Student, 0)

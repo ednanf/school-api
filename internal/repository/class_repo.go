@@ -94,6 +94,7 @@ func (r *classRepo) GetById(ctx context.Context, id int) (*domain.Class, error) 
 	return &c, nil
 }
 
+// List takes a context, limit and offset and returns a slice, a total and errors
 func (r *classRepo) List(ctx context.Context, limit int, offset int) ([]domain.Class, int, error) {
 	// Make an empty slice to hold classes
 	classes := make([]domain.Class, 0)
@@ -135,7 +136,7 @@ func (r *classRepo) Update(ctx context.Context, id int, input domain.PatchClassI
 	query := `
 		UPDATE classes SET
 			grade = :grade,
-			letter = :letter
+			letter = :letter,
 			updated_at = :updated_at
 		WHERE id = :id
 	`
