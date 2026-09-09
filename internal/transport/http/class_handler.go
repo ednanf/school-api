@@ -145,19 +145,13 @@ func (h *ClassHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	offset := (page - 1) * limit
 
 	// Call the repository with context and parsed pagination
-	classes, total, err := h.repo.List(r.Context(), limit, offset)
+	classes, err := h.repo.List(r.Context(), limit, offset)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to fetch students", nil)
 		return
 	}
 
-	// Map the values to a PaginatedResult struct
-	result := domain.PaginatedResult[domain.Class]{
-		Total: total,
-		Items: classes,
-	}
-
-	sendSuccess(w, http.StatusOK, "Fetched classes successfully", result)
+	sendSuccess(w, http.StatusOK, "Fetched classes successfully", classes)
 }
 
 func (h *ClassHandler) HandlePatch(w http.ResponseWriter, r *http.Request) {

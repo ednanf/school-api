@@ -94,26 +94,18 @@ func (r *classRepo) GetById(ctx context.Context, id int) (*domain.Class, error) 
 }
 
 // List takes a context, limit and offset and returns a slice, a total and errors
-func (r *classRepo) List(ctx context.Context, limit int, offset int) ([]domain.Class, int, error) {
+func (r *classRepo) List(ctx context.Context, limit int, offset int) ([]domain.Class, error) {
 	// Make an empty slice to hold classes
 	classes := make([]domain.Class, 0)
 
-	var total int
-	countQuery := "SELECT COUNT(*) FROM classes"
-
-	// Get the total count in the table
-	if err := r.db.GetContext(ctx, &total, countQuery); err != nil {
-		return nil, 0, err
-	}
-
-	// Get all columns from the table classes, ordered by thei ID, limited to a certain number
+	// Get all columns from the table classes, ordered by their ID, limited to a certain number
 	query := "SELECT * FROM classes ORDER BY id LIMIT ? OFFSET ?"
 
 	// Execute the db operation
 	err := r.db.SelectContext(ctx, &classes, query, limit, offset)
 
 	// Return the results to be used
-	return classes, total, err
+	return classes, err
 }
 
 func (r *classRepo) Update(ctx context.Context, id int, input domain.PatchClassInput) (*domain.Class, error) {
