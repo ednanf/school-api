@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -187,7 +186,6 @@ func (h *ClassHandler) HandlePatch(w http.ResponseWriter, r *http.Request) {
 			sendError(w, http.StatusNotFound, "Class not found", nil)
 			return
 		}
-		fmt.Printf("[ERROR] %v\n", err)
 		sendError(w, http.StatusInternalServerError, "Failed to update the class", nil)
 		return
 	}
