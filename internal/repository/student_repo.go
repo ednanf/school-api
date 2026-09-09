@@ -4,10 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/ednanf/school-api/internal/domain"
 	"github.com/jmoiron/sqlx"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // studentRepo stores the db connnection and the repository methods attached to it
@@ -29,36 +32,37 @@ func (r *studentRepo) BatchCreate(ctx context.Context, students []domain.Student
 	// Initiate a db transaction with the context
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("studentRepo.BatchCreate begin tx: %w", err)
 	}
 
 	// Should any error occur, roll back the database
 	defer tx.Rollback()
 
-	now := time.Now()
 	query := `
         INSERT INTO students (first_name, last_name, email, class_id, created_at, updated_at)
         VALUES (:first_name, :last_name, :email, :class_id, :created_at, :updated_at)
     `
-
+	caser := cases.Title(language.English)
+	now := time.Now().UTC()
 	total := 0
 
 	// Loop the student slice argument
 	for i := range students {
 		// Add timestamps
+		students[i].Normalize(caser)
 		students[i].CreatedAt = now
 		students[i].UpdatedAt = now
 
 		// Execute the database operation in the ongoing transaction
 		res, err := tx.NamedExecContext(ctx, query, students[i])
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, fmt.Errorf("studentRepo.BatchCreate insert: %w", err)
 		}
 
 		// Retrieve the newly inserted entry's id to be able to send a response
 		id, err := res.LastInsertId()
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, fmt.Errorf("studentRepo.BatchCreate last insert id: %w", err)
 		}
 
 		// Assign the received id to the entry in order to show in the response
@@ -69,7 +73,7 @@ func (r *studentRepo) BatchCreate(ctx context.Context, students []domain.Student
 
 	// Commit the database changes
 	if err := tx.Commit(); err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("studentRepo.BatchCreate commit: %w", err)
 	}
 
 	return students, total, nil
@@ -84,7 +88,7 @@ func (r *studentRepo) BatchDelete(ctx context.Context, ids []int) (int64, error)
 	// Expand the slice into positional placeholders: WHERE id IN (?, ?, ...)
 	query, args, err := sqlx.In("DELETE FROM students WHERE id IN (?)", ids)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("studentRepo.BatchDelete query build: %w", err)
 	}
 
 	// Rebind query to match MariaDB driver syntax
@@ -93,13 +97,13 @@ func (r *studentRepo) BatchDelete(ctx context.Context, ids []int) (int64, error)
 	// Execute the db operation
 	result, err := r.db.ExecContext(ctx, query, args...)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("studentRepo.BatchDelete execute: %w", err)
 	}
 
 	// Return total number of deleted rows
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("studentRepo.BatchDelete rows affected: %w", err)
 	}
 
 	return rowsAffected, nil
@@ -111,21 +115,27 @@ func (r *studentRepo) Create(ctx context.Context, s *domain.Student) error {
         VALUES (:first_name, :last_name, :email, :class_id, :created_at, :updated_at)
     `
 
+	// Initiate a caser to normalize capitalization
+	caser := cases.Title(language.English)
+
+	// Normalize fields explicitly (Trim + Case handling)
+	s.Normalize(caser)
+
 	// Add timestamp
-	now := time.Now()
+	now := time.Now().UTC()
 	s.CreatedAt = now
 	s.UpdatedAt = now
 
 	// Execute the db operation with `NamedExecContext` to match the named placeholders
 	result, err := r.db.NamedExecContext(ctx, query, s)
 	if err != nil {
-		return err
+		return fmt.Errorf("studentRepo.Create execute: %w", err)
 	}
 
 	// Grab newly inserted entry's id to be able to send a response
 	id, err := result.LastInsertId()
 	if err != nil {
-		return err
+		return fmt.Errorf("studentRepo.Create last insert id: %w", err)
 	}
 
 	// Assign the received id to the entry in order to show in the response
@@ -140,13 +150,13 @@ func (r *studentRepo) Delete(ctx context.Context, id int) error {
 	// Execute the db operation
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("studentRepo.Delete execute: %w", err)
 	}
 
 	// Check if any row was actually deleted
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return fmt.Errorf("studentRepo.Delete rows affected: %w", err)
 	}
 
 	// If 0 rows were affected, the ID did not exist in the db
@@ -171,7 +181,7 @@ func (r *studentRepo) GetByID(ctx context.Context, id int) (*domain.Student, err
 		}
 
 		// Other errors
-		return nil, err
+		return nil, fmt.Errorf("studentRepo.GetByID execute: %w", err)
 	}
 
 	return &s, nil
@@ -186,7 +196,7 @@ func (r *studentRepo) List(ctx context.Context, limit int, offset int) ([]domain
 	var totalItems int
 	countQuery := "SELECT COUNT(*) FROM students"
 	if err := r.db.GetContext(ctx, &totalItems, countQuery); err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("studentRepo.List count: %w", err)
 	}
 
 	// Get all columns from the table students, ordered by their ID, and limited to a certain number
@@ -194,16 +204,19 @@ func (r *studentRepo) List(ctx context.Context, limit int, offset int) ([]domain
 
 	// Execute the db operation
 	err := r.db.SelectContext(ctx, &students, query, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("studentRepo.List fetch: %w", err)
+	}
 
 	// Return the results to be used
-	return students, totalItems, err
+	return students, totalItems, nil
 }
 
 func (r *studentRepo) Update(ctx context.Context, id int, input domain.PatchStudentInput) (*domain.Student, error) {
 	// Fetch current record from DB
 	student, err := r.GetByID(ctx, id)
 	if err != nil {
-		return nil, err // Returns sql.ErrNoRows if 404
+		return nil, fmt.Errorf("studentRepo.Update fetch: %w", err)
 	}
 
 	// Overwrite only fields provided in the PATCH payload
@@ -219,22 +232,28 @@ func (r *studentRepo) Update(ctx context.Context, id int, input domain.PatchStud
 	if input.ClassID != nil {
 		student.ClassID = *input.ClassID
 	}
-	student.UpdatedAt = time.Now()
+
+	// Normalize the entity as a whole
+	caser := cases.Title(language.English)
+	student.Normalize(caser)
+
+	// Apply timestamp
+	student.UpdatedAt = time.Now().UTC()
 
 	query := `
-        UPDATE students SET
-            first_name = :first_name,
-            last_name = :last_name,
-            email = :email,
-            class_id = :class_id,
-            updated_at = :updated_at
-        WHERE id = :id
-    `
+		UPDATE students SET
+			first_name = :first_name,
+			last_name = :last_name,
+			email = :email,
+			class_id = :class_id,
+			updated_at = :updated_at
+		WHERE id = :id
+	`
 
 	// Execute static SQL query using sqlx named placeholders
 	_, err = r.db.NamedExecContext(ctx, query, student)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("studentRepo.Update execute: %w", err)
 	}
 
 	return student, nil

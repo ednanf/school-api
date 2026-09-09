@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ednanf/school-api/internal/domain"
@@ -32,24 +33,24 @@ func (r *subjectRepo) Create(ctx context.Context, s *domain.Subject) error {
 	// Initiate a caser to normalize capitalization
 	caser := cases.Title(language.English)
 
+	// Normalize fields explicitly (Trim + Case handling)
+	s.Name = caser.String(strings.TrimSpace(s.Name))
+
 	// Add timestamp and normalize values
-	now := time.Now()
+	now := time.Now().UTC()
 	s.CreatedAt = now
 	s.UpdatedAt = now
-	s.Name = caser.String(s.Name)
-
-	fmt.Printf("[DEBUG] s: %v\n", s)
 
 	// Execute the db operation with `NamedExecContext` to match the named placeholders
 	result, err := r.db.NamedExecContext(ctx, query, s)
 	if err != nil {
-		return err
+		return fmt.Errorf("subjectRepo.Create execute: %w", err)
 	}
 
 	// Retrieve newly inserted entry's id to be able to send a response
 	id, err := result.LastInsertId()
 	if err != nil {
-		return err
+		return fmt.Errorf("subjectRepo.Create last insert id: %w", err)
 	}
 
 	// Assign the received id to the entry in order to show in the response
@@ -64,13 +65,13 @@ func (r *subjectRepo) Delete(ctx context.Context, id int) error {
 	// Execute the db operation
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("subjectRepo.Delete execute: %w", err)
 	}
 
 	// Check if any row was actually affected
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return fmt.Errorf("subjectRepo.Delete rows affected: %w", err)
 	}
 
 	if rowsAffected == 0 {
@@ -93,7 +94,7 @@ func (r *subjectRepo) GetById(ctx context.Context, id int) (*domain.Subject, err
 		}
 
 		// Other errors
-		return nil, err
+		return nil, fmt.Errorf("subjectRepo.GetById execute: %w", err)
 	}
 
 	return &s, nil
@@ -108,7 +109,7 @@ func (r *subjectRepo) List(ctx context.Context, limit int, offset int) ([]domain
 	var totalItems int
 	countQuery := "SELECT COUNT(*) FROM subjects"
 	if err := r.db.GetContext(ctx, &totalItems, countQuery); err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("subjectRepo.List count: %w", err)
 	}
 
 	// Get all columns from table subjects, ordered by their ID, limited to a certain number
@@ -116,23 +117,30 @@ func (r *subjectRepo) List(ctx context.Context, limit int, offset int) ([]domain
 
 	// Execute the db operation
 	err := r.db.SelectContext(ctx, &subjects, query, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("subjectRepo.List fetch: %w", err)
+	}
 
 	// Return the results to be used
-	return subjects, totalItems, err
+	return subjects, totalItems, nil
 }
 
 func (r *subjectRepo) Update(ctx context.Context, id int, input domain.PatchSubjectInput) (*domain.Subject, error) {
 	// Fetch the current record from the db
 	subject, err := r.GetById(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("subjectRepo.Update fetch: %w", err)
 	}
+
+	caser := cases.Title(language.English)
 
 	// Overwrite only fields provided in the PATCH payload
 	if input.Name != nil {
-		subject.Name = *input.Name
+		subject.Name = caser.String(strings.TrimSpace(*input.Name))
 	}
-	subject.UpdatedAt = time.Now()
+
+	// Apply timestamp
+	subject.UpdatedAt = time.Now().UTC()
 
 	query := `
 		UPDATE subjects SET
@@ -143,7 +151,7 @@ func (r *subjectRepo) Update(ctx context.Context, id int, input domain.PatchSubj
 
 	_, err = r.db.NamedExecContext(ctx, query, subject)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("subjectRepo.Update execute: %w", err)
 	}
 
 	return subject, nil

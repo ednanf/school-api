@@ -2,7 +2,10 @@ package domain
 
 import (
 	"context"
+	"strings"
 	"time"
+
+	"golang.org/x/text/cases"
 )
 
 // StudentRepository defines the contract for database operations (in student_repo.go)
@@ -45,4 +48,11 @@ type BatchCreateInput struct {
 // BatchDeleteInput defines the JSON payload for deleting multiple students by ID
 type BatchDeleteInput struct {
 	IDs []int `json:"ids" validate:"required,min=1,max=100,dive,gt=0"`
+}
+
+// Normalize applies string normalization to user input fields
+func (s *Student) Normalize(caser cases.Caser) {
+	s.FirstName = caser.String(strings.ToLower(strings.TrimSpace(s.FirstName)))
+	s.LastName = caser.String(strings.ToLower(strings.TrimSpace(s.LastName)))
+	s.Email = strings.ToLower(strings.TrimSpace(s.Email))
 }

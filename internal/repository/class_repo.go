@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -27,22 +28,24 @@ func (r *classRepo) Create(ctx context.Context, c *domain.Class) error {
 		VALUES (:grade, :letter, :created_at, :updated_at)
 	`
 
-	// Add timestamp and normalize the casing
-	now := time.Now()
+	// Normalize fields
+	c.Letter = strings.ToUpper(strings.TrimSpace(c.Letter))
+
+	// Add timestamp
+	now := time.Now().UTC()
 	c.CreatedAt = now
 	c.UpdatedAt = now
-	c.Letter = strings.ToUpper(c.Letter)
 
 	// Execute the db operation with `NamedExecContext` to match the named placeholders
 	result, err := r.db.NamedExecContext(ctx, query, c)
 	if err != nil {
-		return err
+		return fmt.Errorf("classRepo.Create execute: %w", err)
 	}
 
 	// Retrieve newly inserted entry's id to be able to send a response
 	id, err := result.LastInsertId()
 	if err != nil {
-		return err
+		return fmt.Errorf("classRepo.Create last insert id: %w", err)
 	}
 
 	// Assign the received id to the entry in order to show in the response
@@ -57,13 +60,13 @@ func (r *classRepo) Delete(ctx context.Context, id int) error {
 	// Execute the db operation
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("classRepo.Delete execute: %w", err)
 	}
 
 	// Check if any row was actually deleted
 	rowsaffected, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return fmt.Errorf("classRepo.Delete rows affected: %w", err)
 	}
 
 	// If 0 rows were affected, the ID did not exist in the db
@@ -87,7 +90,7 @@ func (r *classRepo) GetById(ctx context.Context, id int) (*domain.Class, error) 
 		}
 
 		// Other errors
-		return nil, err
+		return nil, fmt.Errorf("classRepo.GetById execute: %w", err)
 	}
 
 	return &c, nil
@@ -102,7 +105,7 @@ func (r *classRepo) List(ctx context.Context, limit int, offset int) ([]domain.C
 	var totalItems int
 	countQuery := "SELECT COUNT(*) FROM classes"
 	if err := r.db.GetContext(ctx, &totalItems, countQuery); err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("classRepo.List count: %w", err)
 	}
 
 	// Get all columns from the table classes, ordered by their ID, limited to a certain number
@@ -110,16 +113,19 @@ func (r *classRepo) List(ctx context.Context, limit int, offset int) ([]domain.C
 
 	// Execute the db operation
 	err := r.db.SelectContext(ctx, &classes, query, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("classRepo.List fetch: %w", err)
+	}
 
 	// Return the results to be used
-	return classes, totalItems, err
+	return classes, totalItems, nil
 }
 
 func (r *classRepo) Update(ctx context.Context, id int, input domain.PatchClassInput) (*domain.Class, error) {
 	// Fetch the current record from the db
 	class, err := r.GetById(ctx, id)
 	if err != nil {
-		return nil, err // Returns sql.ErrNoRows if 404
+		return nil, fmt.Errorf("classRepo.Update fetch: %w", err) // Returns sql.ErrNoRows if 404
 	}
 
 	// Overwrite only fields provided in the PATCH payload
@@ -127,9 +133,9 @@ func (r *classRepo) Update(ctx context.Context, id int, input domain.PatchClassI
 		class.Grade = *input.Grade
 	}
 	if input.Letter != nil {
-		class.Letter = *input.Letter
+		class.Letter = strings.ToUpper(strings.TrimSpace(*input.Letter))
 	}
-	class.UpdatedAt = time.Now()
+	class.UpdatedAt = time.Now().UTC()
 
 	query := `
 		UPDATE classes SET
@@ -142,7 +148,7 @@ func (r *classRepo) Update(ctx context.Context, id int, input domain.PatchClassI
 	// Execute static SQL query using named placeholders
 	_, err = r.db.NamedExecContext(ctx, query, class)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("classRepo.Update execute: %w", err)
 	}
 
 	return class, nil
