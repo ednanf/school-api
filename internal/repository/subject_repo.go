@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -57,6 +58,24 @@ func (r *subjectRepo) Create(ctx context.Context, s *domain.Subject) error {
 }
 
 func (r *subjectRepo) Delete(ctx context.Context, id int) error {
+	query := "DELETE FROM subjects WHERE id = ?"
+
+	// Execute the db operation
+	result, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	// Check if any row was actually affected
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
 	return nil
 }
 
