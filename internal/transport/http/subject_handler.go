@@ -117,7 +117,40 @@ func (h *SubjectHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *SubjectHandler) HandleList(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "List hit", nil)
+	// Parse query params correctly from r.URL.Query()
+	queryParams := r.URL.Query()
+	limitStr := queryParams.Get("limit")
+	pageStr := queryParams.Get("page")
+
+	// Defaults
+	limit := 30
+	page := 1
+
+	// Convert string query params to integers
+	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+		limit = 1
+	}
+
+	if p, err := strconv.Atoi(pageStr); err == nil && p >= 0 {
+		page = p
+	}
+
+	// Limit cpa to prevent abuse
+	if limit > 100 {
+		limit = 100
+	}
+
+	// Calculate the database offset derived from page number
+	offset := (page - 1) * limit
+
+	// Call the repository with context and parsed pagination
+	subjects, err := h.repo.List(r.Context(), limit, offset)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "Failed to fetch students", nil)
+		return
+	}
+
+	sendSuccess(w, http.StatusOK, "Fetched subjects successfully", subjects)
 }
 
 func (h *SubjectHandler) HandlePatch(w http.ResponseWriter, r *http.Request) {

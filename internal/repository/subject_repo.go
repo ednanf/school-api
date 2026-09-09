@@ -99,10 +99,45 @@ func (r *subjectRepo) GetById(ctx context.Context, id int) (*domain.Subject, err
 	return &s, nil
 }
 
-func (r *subjectRepo) List(ctx context.Context, limit int, offset int) ([]domain.Subject, int, error) {
-	return nil, 0, nil
+// List takes a context, limit and offset and returns a slice, a total and errors
+func (r *subjectRepo) List(ctx context.Context, limit int, offset int) ([]domain.Subject, error) {
+	// Make an empty slice to hold subjects
+	subjects := make([]domain.Subject, 0)
+
+	// Get all columns from table subjects, ordered by their ID, limited to a certain number
+	query := "SELECT * FROM subjects ORDER BY id LIMIT ? OFFSET ?"
+
+	// Execute the db operation
+	err := r.db.SelectContext(ctx, &subjects, query, limit, offset)
+
+	// Return the results to be used
+	return subjects, err
 }
 
 func (r *subjectRepo) Update(ctx context.Context, id int, input domain.PatchSubjectInput) (*domain.Subject, error) {
-	return nil, nil
+	// Fetch the current record from the db
+	subject, err := r.GetById(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Overwrite only fields provided in the PATCH payload
+	if input.Name != nil {
+		subject.Name = *input.Name
+	}
+	subject.UpdatedAt = time.Now()
+
+	query := `
+		UPDATE subjects SET
+			name = :name
+			updated_at = :updated_at
+		WHERE id = :id
+	`
+
+	_, err = r.db.NamedExecContext(ctx, query, subject)
+	if err != nil {
+		return nil, err
+	}
+
+	return subject, nil
 }
