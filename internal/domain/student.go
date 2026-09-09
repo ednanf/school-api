@@ -12,7 +12,7 @@ type StudentRepository interface {
 	Create(ctx context.Context, student *Student) error
 	Delete(ctx context.Context, id int) error
 	GetByID(ctx context.Context, id int) (*Student, error)
-	List(ctx context.Context, limit int, offset int) ([]Student, int, error)
+	List(ctx context.Context, limit int, offset int) ([]Student, error)
 	Update(ctx context.Context, id int, input PatchStudentInput) (*Student, error)
 }
 

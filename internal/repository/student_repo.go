@@ -178,17 +178,9 @@ func (r *studentRepo) GetByID(ctx context.Context, id int) (*domain.Student, err
 }
 
 // List takes a context, limit and offset and returns a slice, a total and errors
-func (r *studentRepo) List(ctx context.Context, limit int, offset int) ([]domain.Student, int, error) {
+func (r *studentRepo) List(ctx context.Context, limit int, offset int) ([]domain.Student, error) {
 	// Make an empty slice to hold students
 	students := make([]domain.Student, 0)
-
-	var total int
-	countQuery := "SELECT COUNT(*) FROM students"
-
-	// Get the total count in the table
-	if err := r.db.GetContext(ctx, &total, countQuery); err != nil {
-		return nil, 0, err
-	}
 
 	// Get all columns from the table students, ordered by their ID, and limited to a certain number
 	query := "SELECT * FROM students ORDER BY id LIMIT ? OFFSET ?"
@@ -197,7 +189,7 @@ func (r *studentRepo) List(ctx context.Context, limit int, offset int) ([]domain
 	err := r.db.SelectContext(ctx, &students, query, limit, offset)
 
 	// Return the results to be used
-	return students, total, err
+	return students, err
 }
 
 func (r *studentRepo) Update(ctx context.Context, id int, input domain.PatchStudentInput) (*domain.Student, error) {
