@@ -144,13 +144,30 @@ func (h *ClassHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	offset := (page - 1) * limit
 
 	// Call the repository with context and parsed pagination
-	classes, err := h.repo.List(r.Context(), limit, offset)
+	classes, totalItems, err := h.repo.List(r.Context(), limit, offset)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to fetch students", nil)
 		return
 	}
 
-	sendSuccess(w, http.StatusOK, "Fetched classes successfully", classes)
+	// Calculate total pages safely
+	totalPages := 0
+	if totalItems > 0 {
+		totalPages = (totalItems + limit - 1) / limit
+	}
+
+	result := PaginatedResult[domain.Class]{
+		Items: classes,
+		Meta: PaginatedMeta{
+			Page:       page,
+			Limit:      limit,
+			Count:      len(classes),
+			TotalItems: totalItems,
+			TotalPages: totalPages,
+		},
+	}
+
+	sendSuccess(w, http.StatusOK, "Fetched classes successfully", result)
 }
 
 func (h *ClassHandler) HandlePatch(w http.ResponseWriter, r *http.Request) {

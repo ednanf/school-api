@@ -100,9 +100,16 @@ func (r *subjectRepo) GetById(ctx context.Context, id int) (*domain.Subject, err
 }
 
 // List takes a context, limit and offset and returns a slice, a total and errors
-func (r *subjectRepo) List(ctx context.Context, limit int, offset int) ([]domain.Subject, error) {
+func (r *subjectRepo) List(ctx context.Context, limit int, offset int) ([]domain.Subject, int, error) {
 	// Make an empty slice to hold subjects
 	subjects := make([]domain.Subject, 0)
+
+	// Get the total count across the entire table
+	var totalItems int
+	countQuery := "SELECT COUNT(*) FROM subjects"
+	if err := r.db.GetContext(ctx, &totalItems, countQuery); err != nil {
+		return nil, 0, err
+	}
 
 	// Get all columns from table subjects, ordered by their ID, limited to a certain number
 	query := "SELECT * FROM subjects ORDER BY id LIMIT ? OFFSET ?"
@@ -111,7 +118,7 @@ func (r *subjectRepo) List(ctx context.Context, limit int, offset int) ([]domain
 	err := r.db.SelectContext(ctx, &subjects, query, limit, offset)
 
 	// Return the results to be used
-	return subjects, err
+	return subjects, totalItems, err
 }
 
 func (r *subjectRepo) Update(ctx context.Context, id int, input domain.PatchSubjectInput) (*domain.Subject, error) {

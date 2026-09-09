@@ -128,7 +128,7 @@ func (h *SubjectHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 
 	// Convert string query params to integers
 	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
-		limit = 1
+		limit = l
 	}
 
 	if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
@@ -144,13 +144,30 @@ func (h *SubjectHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	offset := (page - 1) * limit
 
 	// Call the repository with context and parsed pagination
-	subjects, err := h.repo.List(r.Context(), limit, offset)
+	subjects, totalItems, err := h.repo.List(r.Context(), limit, offset)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to fetch students", nil)
 		return
 	}
 
-	sendSuccess(w, http.StatusOK, "Fetched subjects successfully", subjects)
+	// Calculate total pages safely
+	totalPages := 0
+	if totalItems > 0 {
+		totalPages = (totalItems + limit - 1) / limit
+	}
+
+	result := PaginatedResult[domain.Subject]{
+		Items: subjects,
+		Meta: PaginatedMeta{
+			Page:       page,
+			Limit:      limit,
+			Count:      len(subjects),
+			TotalItems: totalItems,
+			TotalPages: totalPages,
+		},
+	}
+
+	sendSuccess(w, http.StatusOK, "Fetched subjects successfully", result)
 }
 
 func (h *SubjectHandler) HandlePatch(w http.ResponseWriter, r *http.Request) {
