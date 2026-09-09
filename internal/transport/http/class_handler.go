@@ -41,17 +41,13 @@ func (h *ClassHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	// Initialize a Class struct
 	var class domain.Class
 
-	fmt.Printf("ID %v, Grade %v, Letter %v, Created at %v, Updated at %v\n", class.ID, class.Grade, class.Letter, class.CreatedAt, class.UpdatedAt)
-
 	// Decode the JSON body directly into the struct via pointer
 	if err := json.NewDecoder(r.Body).Decode(&class); err != nil {
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
 		return
 	}
 
-	fmt.Printf("ID %v, Grade %v, Letter %v, Created at %v, Updated at %v\n", class.ID, class.Grade, class.Letter, class.CreatedAt, class.UpdatedAt)
-
-	// Validate struct rules using the injected validator instance
+	// Validate struct using the injected validator instance
 	if err := h.validate.StructCtx(r.Context(), &class); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
@@ -61,11 +57,8 @@ func (h *ClassHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("ID %v, Grade %v, Letter %v, Created at %v, Updated at %v\n", class.ID, class.Grade, class.Letter, class.CreatedAt, class.UpdatedAt)
-
 	// Save to the db via the repository
 	if err := h.repo.Create(r.Context(), &class); err != nil {
-		fmt.Printf("Database error: %v\n", err) // Print exact error to console
 		sendError(w, http.StatusInternalServerError, "Failed to create class entry", nil)
 		return
 	}
