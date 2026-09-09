@@ -65,14 +65,16 @@ func (h *StudentHandler) HandleBatchCreate(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Map the values to a PaginatedResult struct
-	result := domain.PaginatedResult[domain.Student]{
-		Total: total,
+	result := BatchResult[domain.Student]{
 		Items: createdStudents,
+		Meta: BatchMeta{
+			Count: len(createdStudents),
+			Total: total,
+		},
 	}
 
 	// Return 201 with the created students
-	sendSuccess(w, http.StatusCreated, "Batch creation successful", result)
+	sendSuccess(w, http.StatusCreated, "Students created successfully", result)
 }
 
 func (h *StudentHandler) HandleBatchDelete(w http.ResponseWriter, r *http.Request) {
@@ -217,14 +219,31 @@ func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	offset := (page - 1) * limit
 
 	// Call the repository with context and parsed pagination
-	students, err := h.repo.List(r.Context(), limit, offset)
+	students, totalItems, err := h.repo.List(r.Context(), limit, offset)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to fetch students", nil)
 		return
 	}
 
+	// Calculate total pages safely
+	totalPages := 0
+	if totalItems > 0 {
+		totalPages = (totalItems + limit - 1) / limit
+	}
+
+	result := PaginatedResult[domain.Student]{
+		Items: students,
+		Meta: PaginatedMeta{
+			Page:       page,
+			Limit:      limit,
+			Count:      len(students),
+			TotalItems: totalItems,
+			TotalPages: totalPages,
+		},
+	}
+
 	// Returns [] instead of null if empty because studentRepo initializes an empty slice
-	sendSuccess(w, http.StatusOK, "Fetched students successfully", students)
+	sendSuccess(w, http.StatusOK, "Fetched students successfully", result)
 }
 
 func (h *StudentHandler) HandlePatch(w http.ResponseWriter, r *http.Request) {
