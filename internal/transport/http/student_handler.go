@@ -209,7 +209,7 @@ func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 		limit = 100
 	}
 
-	if p, err := strconv.Atoi(pageStr); err == nil && p >= 0 {
+	if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
 		page = p
 	}
 

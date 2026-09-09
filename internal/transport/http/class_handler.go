@@ -131,7 +131,7 @@ func (h *ClassHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 		limit = l
 	}
 
-	if p, err := strconv.Atoi(pageStr); err == nil && p >= 0 {
+	if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
 		page = p
 	}
 
