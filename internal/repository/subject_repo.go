@@ -2,9 +2,13 @@ package repository
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/ednanf/school-api/internal/domain"
 	"github.com/jmoiron/sqlx"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // subjectRepo stores the db connection and has the repository methods attached to it
@@ -18,6 +22,37 @@ func NewSubjectRepository(db *sqlx.DB) domain.SubjectRepository {
 }
 
 func (r *subjectRepo) Create(ctx context.Context, s *domain.Subject) error {
+	query := `
+		INSERT INTO subjects (name, created_at, updated_at)
+		VALUES(:name, :created_at, :updated_at)
+	`
+
+	// Initiate a caser to normalize capitalization
+	caser := cases.Title(language.English)
+
+	// Add timestamp and normalize values
+	now := time.Now()
+	s.CreatedAt = now
+	s.UpdatedAt = now
+	s.Name = caser.String(s.Name)
+
+	fmt.Printf("[DEBUG] s: %v\n", s)
+
+	// Execute the db operation with `NamedExecContext` to match the named placeholders
+	result, err := r.db.NamedExecContext(ctx, query, s)
+	if err != nil {
+		return err
+	}
+
+	// Retrieve newly inserted entry's id to be able to send a response
+	id, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	// Assign the received id to the entry in order to show in the response
+	s.ID = int(id)
+
 	return nil
 }
 

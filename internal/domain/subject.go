@@ -17,9 +17,9 @@ type SubjectRepository interface {
 // Subject defines the shape of Subject struct in the database
 type Subject struct {
 	ID        int       `json:"id" db:"id"`
-	Name      string    `json:"name" db:"name" validate:"required,min=1,max=20"`
+	Name      string    `json:"name" db:"name" validate:"required,min=1,max=50"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // PatchSubjectInput defines the JSON payload for patching one subject

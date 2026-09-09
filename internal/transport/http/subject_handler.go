@@ -1,6 +1,8 @@
 package http
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/ednanf/school-api/internal/domain"
@@ -33,7 +35,32 @@ func (h *SubjectHandler) SubjectRoutes() chi.Router {
 }
 
 func (h *SubjectHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "Create hit", nil)
+	// Initialize a Subject struct
+	var subject domain.Subject
+
+	// Decode the JSON body directly into the struct via pointer
+	if err := json.NewDecoder(r.Body).Decode(&subject); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	if err := h.validate.StructCtx(r.Context(), &subject); err != nil {
+		if validationErrs, ok := err.(validator.ValidationErrors); ok {
+			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
+			return
+		}
+		sendError(w, http.StatusBadRequest, "Validation failed", nil)
+		return
+	}
+
+	// Save to the db via the repository
+	if err := h.repo.Create(r.Context(), &subject); err != nil {
+		fmt.Printf("[DEBUG] %v\n", err)
+		sendError(w, http.StatusInternalServerError, "Failed to create subject entry", nil)
+		return
+	}
+
+	sendSuccess(w, http.StatusCreated, "Subject created successfully", subject)
 }
 
 func (h *SubjectHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {

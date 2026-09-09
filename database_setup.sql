@@ -6,8 +6,8 @@ USE school_db;
 -- Create `classes` table
 CREATE TABLE IF NOT EXISTS classes (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    grade TINYINT NOT NULL CHECK (grade BETWEEN 1 AND 8),
-    letter CHAR(1) NOT NULL CHECK (letter IN ('A', 'B')),
+    grade TINYINT NOT NULL CHECK (grade BETWEEN 1 AND 9),
+    letter CHAR(1) NOT NULL CHECK (letter IN ('A', 'B', 'C', 'D')),
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     UNIQUE KEY uq_class_grade_letter (grade, letter)
@@ -21,7 +21,35 @@ CREATE TABLE IF NOT EXISTS subjects (
     updated_at DATETIME NOT NULL
 ) AUTO_INCREMENT=1;
 
--- Insert base classes to the table
+-- Insert base subjects into the table
+INSERT IGNORE INTO subjects (name) VALUES
+('English Language Arts'),
+('Literature'),
+('Mathematics'),
+('Algebra'),
+('Geometry'),
+('Calculus'),
+('Statistics'),
+('General Science'),
+('Biology'),
+('Chemistry'),
+('Physics'),
+('Environmental Science'),
+('Social Studies'),
+('World History'),
+('US History'),
+('Geography'),
+('Civics & Government'),
+('Economics'),
+('Physical Education'),
+('Health'),
+('Spanish'),
+('French'),
+('Art'),
+('Music'),
+('Computer Science');
+
+-- Insert base classes into the table
 INSERT IGNORE INTO classes (grade, letter) VALUES
 (1, 'A'), (1, 'B'), (2, 'A'), (2, 'B'),
 (3, 'A'), (3, 'B'), (4, 'A'), (4, 'B'),
