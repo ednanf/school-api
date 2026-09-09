@@ -129,7 +129,7 @@ func (r *subjectRepo) Update(ctx context.Context, id int, input domain.PatchSubj
 
 	query := `
 		UPDATE subjects SET
-			name = :name
+			name = :name,
 			updated_at = :updated_at
 		WHERE id = :id
 	`

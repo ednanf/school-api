@@ -154,5 +154,42 @@ func (h *SubjectHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *SubjectHandler) HandlePatch(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "Patch hit", nil)
+	// Extract and convert the id to int
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid subject ID", nil)
+		return
+	}
+
+	// Decode de request's body into the pointer-based PATCH DTO
+	var input domain.PatchSubjectInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Validate field constraints
+	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
+		if validationErrs, ok := err.(validator.ValidationErrors); ok {
+			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
+			return
+		}
+		sendError(w, http.StatusBadRequest, "Validation failed", nil)
+		return
+	}
+
+	// Perform the update in the db
+	updatedSubject, err := h.repo.Update(r.Context(), id, input)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			sendError(w, http.StatusNotFound, "Subject not found", nil)
+			return
+		}
+		fmt.Printf("[DEBUG] error: %v\n", err)
+		sendError(w, http.StatusInternalServerError, "Failed to update the class", nil)
+		return
+	}
+
+	sendSuccess(w, http.StatusOK, "Subject updated successfully", updatedSubject)
 }

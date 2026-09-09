@@ -24,5 +24,5 @@ type Subject struct {
 
 // PatchSubjectInput defines the JSON payload for patching one subject
 type PatchSubjectInput struct {
-	Name *string `json:"name" db:"name" validate:"required,min=1,max=20"` // Required since it's the only patchable field
+	Name *string `json:"name" db:"name" validate:"required,min=1,max=50"` // Required since it's the only patchable field
 }
