@@ -80,8 +80,7 @@ func (r *classRepo) GetById(ctx context.Context, id int) (*domain.Class, error) 
 	query := "SELECT * FROM classes WHERE id = ?"
 
 	// Execute the db operation and assign it to the variable `c` if successful
-	err := r.db.GetContext(ctx, &c, query, id)
-	if err != nil {
+	if err := r.db.GetContext(ctx, &c, query, id); err != nil {
 		// If the id is not found
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
