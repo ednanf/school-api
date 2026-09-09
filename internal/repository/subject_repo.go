@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -79,8 +80,23 @@ func (r *subjectRepo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *subjectRepo) GetById(ctx context.Context, id int) (*domain.Class, error) {
-	return nil, nil
+func (r *subjectRepo) GetById(ctx context.Context, id int) (*domain.Subject, error) {
+	var s domain.Subject
+
+	query := "SELECT * FROM subjects WHERE id = ?"
+
+	// Execute the db operation and assign it to the variable `s` if successful
+	if err := r.db.GetContext(ctx, &s, query, id); err != nil {
+		// If the id is not found
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+
+		// Other errors
+		return nil, err
+	}
+
+	return &s, nil
 }
 
 func (r *subjectRepo) List(ctx context.Context, limit int, offset int) ([]domain.Subject, int, error) {

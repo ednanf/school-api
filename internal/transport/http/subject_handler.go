@@ -92,8 +92,28 @@ func (h *SubjectHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *SubjectHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
+	// Extract and convert the URL param
 	idStr := chi.URLParam(r, "id")
-	sendSuccess(w, http.StatusOK, "Get by id hit", idStr)
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid subject id", nil)
+		return
+	}
+
+	// Search for subject
+	subject, err := h.repo.GetById(r.Context(), id)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "Database error", nil)
+		return
+	}
+
+	// If the subject does not exist
+	if subject == nil {
+		sendError(w, http.StatusNotFound, "Subject not found", nil)
+		return
+	}
+
+	sendSuccess(w, http.StatusOK, "Subject retrieved successfully", subject)
 }
 
 func (h *SubjectHandler) HandleList(w http.ResponseWriter, r *http.Request) {

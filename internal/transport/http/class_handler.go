@@ -93,7 +93,7 @@ func (h *ClassHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ClassHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
-	// Get id from URL
+	// Extract and convert the URL param
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -105,6 +105,7 @@ func (h *ClassHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
 	class, err := h.repo.GetById(r.Context(), id)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Database error", nil)
+		return
 	}
 
 	// If the student does not exist
