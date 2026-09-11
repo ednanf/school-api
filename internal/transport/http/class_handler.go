@@ -31,7 +31,7 @@ func (h *ClassHandler) ClassRoutes() chi.Router {
 	r.Post("/", h.HandleCreate)
 	r.Delete("/{id}", h.HandleDelete)
 	r.Get("/{id}", h.HandleGetById)
-	r.Patch("/{id}", h.HandlePatch)
+	r.Patch("/{id}", h.HandleUpdate)
 
 	return r
 }
@@ -170,7 +170,7 @@ func (h *ClassHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	sendSuccess(w, http.StatusOK, "Fetched classes successfully", result)
 }
 
-func (h *ClassHandler) HandlePatch(w http.ResponseWriter, r *http.Request) {
+func (h *ClassHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the id to int
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
