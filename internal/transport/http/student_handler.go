@@ -33,6 +33,7 @@ func (h *StudentHandler) StudentRoutes() chi.Router {
 	r.Delete("/batch", h.HandleBatchDelete)
 	r.Post("/batch", h.HandleBatchCreate)
 	r.Patch("/batch", h.HandleBatchUpdate)
+	r.Patch("/batch_class", h.HandleBulkUpdateClass)
 	r.Delete("/{id}", h.HandleDelete)
 	r.Get("/{id}", h.HandleGetByID)
 	r.Patch("/{id}", h.HandleUpdate)
@@ -146,6 +147,41 @@ func (h *StudentHandler) HandleBatchUpdate(w http.ResponseWriter, r *http.Reques
 	}
 
 	sendSuccess(w, http.StatusOK, "Students updated successfully", result)
+}
+
+func (h *StudentHandler) HandleBulkUpdateClass(w http.ResponseWriter, r *http.Request) {
+	var input domain.BulkUpdateClassInput
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
+		if validationErrs, ok := err.(validator.ValidationErrors); ok {
+			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
+			return
+		}
+		sendError(w, http.StatusBadRequest, "Validation failed", nil)
+		return
+	}
+
+	rowsAffected, err := h.repo.BulkUpdateClass(r.Context(), input.StudentIDs, input.ClassID)
+	if err != nil {
+		if errors.Is(err, domain.ErrClassNotFound) {
+			sendError(w, http.StatusNotFound, "Target class does not exist", nil)
+			return
+		}
+		sendError(w, http.StatusInternalServerError, "Failed to update students class", nil)
+		return
+	}
+
+	result := map[string]any{
+		"rows_affected": rowsAffected,
+		"class_id":      input.ClassID,
+	}
+
+	sendSuccess(w, http.StatusOK, "Students class updated successfully", result)
 }
 
 func (h *StudentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {

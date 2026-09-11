@@ -184,24 +184,34 @@ func (r *studentRepo) BatchUpdate(ctx context.Context, updates []domain.BatchUpd
 	return updatedStudents, total, nil
 }
 
-// BulkUpdateClass assigns a slice of student IDs to a new class ID in one execution.
-func (r *studentRepo) BatchUpdateClass(ctx context.Context, ids []int, classID int) (int64, error) {
+// BulkUpdateClass reassigns a slice of student IDs to a new class_id in a single execution.
+func (r *studentRepo) BulkUpdateClass(ctx context.Context, ids []int, classID int) (int64, error) {
 	if len(ids) == 0 {
 		return 0, nil
 	}
 
-	// Dynamic placeholder expansion: UPDATE students SET class_id = ?, updated_at = ? WHERE id IN (?, ?, ...)
-	rawQuery := "UPDATE students SET class_id = ?, updated_at = ? WHERE id IN (?)"
+	// 1. Verify target class exists
+	var exists bool
+	checkQuery := "SELECT EXISTS(SELECT 1 FROM classes WHERE id = ?)"
+	if err := r.db.GetContext(ctx, &exists, checkQuery, classID); err != nil {
+		return 0, fmt.Errorf("studentRepo.BulkUpdateClass check class: %w", err)
+	}
+	if !exists {
+		return 0, domain.ErrClassNotFound
+	}
 
-	args := []any{classID, time.Now().UTC(), ids}
-	query, boundArgs, err := sqlx.In(rawQuery, args...)
+	// 2. Perform bulk update
+	rawQuery := "UPDATE students SET class_id = ?, updated_at = ? WHERE id IN (?)"
+	now := time.Now().UTC()
+
+	query, args, err := sqlx.In(rawQuery, classID, now, ids)
 	if err != nil {
 		return 0, fmt.Errorf("studentRepo.BulkUpdateClass query build: %w", err)
 	}
 
 	query = r.db.Rebind(query)
 
-	result, err := r.db.ExecContext(ctx, query, boundArgs...)
+	result, err := r.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return 0, fmt.Errorf("studentRepo.BulkUpdateClass execute: %w", err)
 	}

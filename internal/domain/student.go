@@ -13,7 +13,7 @@ type StudentRepository interface {
 	BatchCreate(ctx context.Context, students []Student) ([]Student, int, error)
 	BatchDelete(ctx context.Context, ids []int) (int64, error)
 	BatchUpdate(ctx context.Context, updates []BatchUpdateStudentItem) ([]Student, int, error)
-	BatchUpdateClass(ctx context.Context, ids []int, classID int) (int64, error)
+	BulkUpdateClass(ctx context.Context, ids []int, classID int) (int64, error)
 	Create(ctx context.Context, student *Student) error
 	Delete(ctx context.Context, id int) error
 	GetByID(ctx context.Context, id int) (*Student, error)
@@ -61,6 +61,12 @@ type BatchUpdateStudentItem struct {
 // BatchUpdateStudentInput is a wrapper DTO for batch update endpoint
 type BatchUpdateStudentInput struct {
 	Students []BatchUpdateStudentItem `json:"students" validate:"required,min=1,max=1000,dive"`
+}
+
+// BulkUpdateClassInput defines the payload for reassigning multiple students to a new class
+type BulkUpdateClassInput struct {
+	StudentIDs []int `json:"student_ids" validate:"required,min=1,max=1000,dive,gt=0"`
+	ClassID    int   `json:"class_id" validate:"required,gt=0"`
 }
 
 // Normalize applies string normalization to user input fields
