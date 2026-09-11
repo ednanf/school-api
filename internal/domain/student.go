@@ -12,6 +12,8 @@ import (
 type StudentRepository interface {
 	BatchCreate(ctx context.Context, students []Student) ([]Student, int, error)
 	BatchDelete(ctx context.Context, ids []int) (int64, error)
+	BatchUpdate(ctx context.Context, updates []BatchUpdateStudentItem) ([]Student, int, error)
+	BatchUpdateClass(ctx context.Context, ids []int, classID int) (int64, error)
 	Create(ctx context.Context, student *Student) error
 	Delete(ctx context.Context, id int) error
 	GetByID(ctx context.Context, id int) (*Student, error)
@@ -39,15 +41,26 @@ type PatchStudentInput struct {
 	ClassID   *int    `json:"class_id" validate:"omitempty,gt=0"`
 }
 
-// BatchCreateInput defines the JSON payload for inserting multiple students
-type BatchCreateInput struct {
+// BatchCreateStudentInput defines the JSON payload for inserting multiple students
+type BatchCreateStudentInput struct {
 	// `dive` tells validator to iterate into the slice and run field validation on each individual element
 	Students []Student `json:"students" validate:"required,min=1,max=2000,dive"`
 }
 
-// BatchDeleteInput defines the JSON payload for deleting multiple students by ID
-type BatchDeleteInput struct {
+// BatchDeleteStudentInput defines the JSON payload for deleting multiple students by ID
+type BatchDeleteStudentInput struct {
 	IDs []int `json:"ids" validate:"required,min=1,max=100,dive,gt=0"`
+}
+
+// BatchUpdateStudentItem is a single item inside the batch update payload
+type BatchUpdateStudentItem struct {
+	ID int `json:"id" validate:"required,gt=0"`
+	PatchStudentInput
+}
+
+// BatchUpdateStudentInput is a wrapper DTO for batch update endpoint
+type BatchUpdateStudentInput struct {
+	Students []BatchUpdateStudentItem `json:"students" validate:"required,min=1,max=1000,dive"`
 }
 
 // Normalize applies string normalization to user input fields

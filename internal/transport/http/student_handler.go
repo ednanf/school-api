@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -31,16 +32,17 @@ func (h *StudentHandler) StudentRoutes() chi.Router {
 	r.Post("/", h.HandleCreate)
 	r.Delete("/batch", h.HandleBatchDelete)
 	r.Post("/batch", h.HandleBatchCreate)
+	r.Patch("/batch", h.HandleBatchUpdate)
 	r.Delete("/{id}", h.HandleDelete)
 	r.Get("/{id}", h.HandleGetByID)
-	r.Patch("/{id}", h.HandlePatch)
+	r.Patch("/{id}", h.HandleUpdate)
 
 	return r
 }
 
 func (h *StudentHandler) HandleBatchCreate(w http.ResponseWriter, r *http.Request) {
 	// Instantiate a variable to hold the payload according to the DTO (for validation and structure)
-	var input domain.BatchCreateInput
+	var input domain.BatchCreateStudentInput
 
 	// Decode the body and store into the variable
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -79,7 +81,7 @@ func (h *StudentHandler) HandleBatchCreate(w http.ResponseWriter, r *http.Reques
 
 func (h *StudentHandler) HandleBatchDelete(w http.ResponseWriter, r *http.Request) {
 	// Instantiate a variable to hold the IDs to be deleted
-	var input domain.BatchDeleteInput
+	var input domain.BatchDeleteStudentInput
 
 	// Decode the body and store in the variable
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -108,6 +110,42 @@ func (h *StudentHandler) HandleBatchDelete(w http.ResponseWriter, r *http.Reques
 	sendSuccess(w, http.StatusOK, "Batch deletion successful", map[string]any{
 		"total": deletedCount,
 	})
+}
+
+func (h *StudentHandler) HandleBatchUpdate(w http.ResponseWriter, r *http.Request) {
+	var input domain.BatchUpdateStudentInput
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Validate using standard StructCtx
+	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
+		if validationErrs, ok := err.(validator.ValidationErrors); ok {
+			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
+			return
+		}
+		sendError(w, http.StatusBadRequest, "Validation failed", nil)
+		return
+	}
+
+	updatedStudents, total, err := h.repo.BatchUpdate(r.Context(), input.Students)
+	if err != nil {
+		fmt.Printf("[DEBUG] error: %v\n", err)
+		sendError(w, http.StatusInternalServerError, "Failed to update students", nil)
+		return
+	}
+
+	result := BatchResult[domain.Student]{
+		Items: updatedStudents,
+		Meta: BatchMeta{
+			Count: len(updatedStudents),
+			Total: total,
+		},
+	}
+
+	sendSuccess(w, http.StatusOK, "Students updated successfully", result)
 }
 
 func (h *StudentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
@@ -246,7 +284,7 @@ func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	sendSuccess(w, http.StatusOK, "Fetched students successfully", result)
 }
 
-func (h *StudentHandler) HandlePatch(w http.ResponseWriter, r *http.Request) {
+func (h *StudentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the id to int
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)

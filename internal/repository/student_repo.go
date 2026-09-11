@@ -109,6 +109,111 @@ func (r *studentRepo) BatchDelete(ctx context.Context, ids []int) (int64, error)
 	return rowsAffected, nil
 }
 
+// BatchUpdate receives a slice of batch inputs and updates each student record in a single transaction.
+func (r *studentRepo) BatchUpdate(ctx context.Context, updates []domain.BatchUpdateStudentItem) ([]domain.Student, int, error) {
+	if len(updates) == 0 {
+		return []domain.Student{}, 0, nil
+	}
+
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return nil, 0, fmt.Errorf("studentRepo.BatchUpdate begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	caser := cases.Title(language.English)
+	now := time.Now().UTC()
+	updatedStudents := make([]domain.Student, 0, len(updates))
+
+	query := `
+		UPDATE students SET
+			first_name = :first_name,
+			last_name = :last_name,
+			email = :email,
+			class_id = :class_id,
+			updated_at = :updated_at
+		WHERE id = :id
+	`
+
+	total := 0
+
+	for _, u := range updates {
+		// Fetch current record inside the active transaction
+		var student domain.Student
+		fetchQuery := "SELECT * FROM students WHERE id = ?"
+		if err := tx.GetContext(ctx, &student, fetchQuery, u.ID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, 0, fmt.Errorf("studentRepo.BatchUpdate student ID %d not found: %w", u.ID, sql.ErrNoRows)
+			}
+			return nil, 0, fmt.Errorf("studentRepo.BatchUpdate fetch ID %d: %w", u.ID, err)
+		}
+
+		// Apply non-nil updates (promoted directly from embedded PatchStudentInput)
+		if u.FirstName != nil {
+			student.FirstName = *u.FirstName
+		}
+		if u.LastName != nil {
+			student.LastName = *u.LastName
+		}
+		if u.Email != nil {
+			student.Email = *u.Email
+		}
+		if u.ClassID != nil {
+			student.ClassID = *u.ClassID
+		}
+
+		// Normalize fields and set updated timestamp
+		student.Normalize(caser)
+		student.UpdatedAt = now
+
+		// Execute update query
+		_, err = tx.NamedExecContext(ctx, query, student)
+		if err != nil {
+			return nil, 0, fmt.Errorf("studentRepo.BatchUpdate execute ID %d: %w", u.ID, err)
+		}
+
+		updatedStudents = append(updatedStudents, student)
+		total++
+	}
+
+	// Commit transaction changes
+	if err := tx.Commit(); err != nil {
+		return nil, 0, fmt.Errorf("studentRepo.BatchUpdate commit: %w", err)
+	}
+
+	return updatedStudents, total, nil
+}
+
+// BulkUpdateClass assigns a slice of student IDs to a new class ID in one execution.
+func (r *studentRepo) BatchUpdateClass(ctx context.Context, ids []int, classID int) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+
+	// Dynamic placeholder expansion: UPDATE students SET class_id = ?, updated_at = ? WHERE id IN (?, ?, ...)
+	rawQuery := "UPDATE students SET class_id = ?, updated_at = ? WHERE id IN (?)"
+
+	args := []any{classID, time.Now().UTC(), ids}
+	query, boundArgs, err := sqlx.In(rawQuery, args...)
+	if err != nil {
+		return 0, fmt.Errorf("studentRepo.BulkUpdateClass query build: %w", err)
+	}
+
+	query = r.db.Rebind(query)
+
+	result, err := r.db.ExecContext(ctx, query, boundArgs...)
+	if err != nil {
+		return 0, fmt.Errorf("studentRepo.BulkUpdateClass execute: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("studentRepo.BulkUpdateClass rows affected: %w", err)
+	}
+
+	return rowsAffected, nil
+}
+
 func (r *studentRepo) Create(ctx context.Context, s *domain.Student) error {
 	query := `
         INSERT INTO students (first_name, last_name, email, class_id, created_at, updated_at)
