@@ -29,10 +29,10 @@ func (h *StudentHandler) StudentRoutes() chi.Router {
 
 	r.Get("/", h.HandleList)
 	r.Post("/", h.HandleCreate)
-	r.Delete("/batch", h.HandleBatchDelete)
-	r.Post("/batch", h.HandleBatchCreate)
-	r.Patch("/batch", h.HandleBatchUpdate)
-	r.Patch("/batch_class", h.HandleBulkUpdateClass)
+	r.Delete("/bulk", h.HandleBulkDelete)
+	r.Post("/bulk", h.HandleBulkCreate)
+	r.Patch("/bulk", h.HandleBulkUpdate)
+	r.Patch("/bulk_class", h.HandleBulkUpdateClass)
 	r.Delete("/{id}", h.HandleDelete)
 	r.Get("/{id}", h.HandleGetByID)
 	r.Patch("/{id}", h.HandleUpdate)
@@ -40,7 +40,7 @@ func (h *StudentHandler) StudentRoutes() chi.Router {
 	return r
 }
 
-func (h *StudentHandler) HandleBatchCreate(w http.ResponseWriter, r *http.Request) {
+func (h *StudentHandler) HandleBulkCreate(w http.ResponseWriter, r *http.Request) {
 	// Instantiate a variable to hold the payload according to the DTO (for validation and structure)
 	var input domain.BatchCreateStudentInput
 
@@ -61,7 +61,7 @@ func (h *StudentHandler) HandleBatchCreate(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Create the new students
-	createdStudents, total, err := h.repo.BatchCreate(r.Context(), input.Students)
+	createdStudents, total, err := h.repo.BulkCreate(r.Context(), input.Students)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to create students", nil)
 		return
@@ -79,7 +79,7 @@ func (h *StudentHandler) HandleBatchCreate(w http.ResponseWriter, r *http.Reques
 	sendSuccess(w, http.StatusCreated, "Students created successfully", result)
 }
 
-func (h *StudentHandler) HandleBatchDelete(w http.ResponseWriter, r *http.Request) {
+func (h *StudentHandler) HandleBulkDelete(w http.ResponseWriter, r *http.Request) {
 	// Instantiate a variable to hold the IDs to be deleted
 	var input domain.BatchDeleteStudentInput
 
@@ -100,7 +100,7 @@ func (h *StudentHandler) HandleBatchDelete(w http.ResponseWriter, r *http.Reques
 	}
 
 	// BatchDelete will return the number of rows affected by the query
-	deletedCount, err := h.repo.BatchDelete(r.Context(), input.IDs)
+	deletedCount, err := h.repo.BulkDelete(r.Context(), input.IDs)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to delete students in batch", nil)
 		return
@@ -112,7 +112,7 @@ func (h *StudentHandler) HandleBatchDelete(w http.ResponseWriter, r *http.Reques
 	})
 }
 
-func (h *StudentHandler) HandleBatchUpdate(w http.ResponseWriter, r *http.Request) {
+func (h *StudentHandler) HandleBulkUpdate(w http.ResponseWriter, r *http.Request) {
 	// Instantiate a variable to hold the payload
 	var input domain.BatchUpdateStudentInput
 
@@ -133,7 +133,7 @@ func (h *StudentHandler) HandleBatchUpdate(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Execute the db operation
-	updatedStudents, total, err := h.repo.BatchUpdate(r.Context(), input.Students)
+	updatedStudents, total, err := h.repo.BulkUpdate(r.Context(), input.Students)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to update students", nil)
 		return

@@ -23,8 +23,8 @@ func NewStudentRepository(db *sqlx.DB) domain.StudentRepository {
 	return &studentRepo{db: db}
 }
 
-// BatchCreate receives a context and a slice of type Student. It accepts 1000 entries at most. It returns a slice containing all created students, the total amount of created entries and errors
-func (r *studentRepo) BatchCreate(ctx context.Context, students []domain.Student) ([]domain.Student, int, error) {
+// BulkCreate receives a context and a slice of type Student. It accepts 1000 entries at most. It returns a slice containing all created students, the total amount of created entries and errors
+func (r *studentRepo) BulkCreate(ctx context.Context, students []domain.Student) ([]domain.Student, int, error) {
 	if len(students) == 0 {
 		return students, 0, nil
 	}
@@ -79,8 +79,8 @@ func (r *studentRepo) BatchCreate(ctx context.Context, students []domain.Student
 	return students, total, nil
 }
 
-// BatchDelete receives a context and a slice of ids of type int. It accepts a maximum of 100 ids. It returns a total and errors
-func (r *studentRepo) BatchDelete(ctx context.Context, ids []int) (int64, error) {
+// BulkDelete receives a context and a slice of ids of type int. It accepts a maximum of 100 ids. It returns a total and errors
+func (r *studentRepo) BulkDelete(ctx context.Context, ids []int) (int64, error) {
 	if len(ids) == 0 {
 		return 0, nil
 	}
@@ -109,8 +109,8 @@ func (r *studentRepo) BatchDelete(ctx context.Context, ids []int) (int64, error)
 	return rowsAffected, nil
 }
 
-// BatchUpdate receives a slice of batch inputs and updates each student record in a single transaction.
-func (r *studentRepo) BatchUpdate(ctx context.Context, updates []domain.BatchUpdateStudentItem) ([]domain.Student, int, error) {
+// BulkUpdate receives a slice of batch inputs and updates each student record in a single transaction.
+func (r *studentRepo) BulkUpdate(ctx context.Context, updates []domain.BatchUpdateStudentItem) ([]domain.Student, int, error) {
 	if len(updates) == 0 {
 		return []domain.Student{}, 0, nil
 	}

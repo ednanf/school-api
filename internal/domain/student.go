@@ -10,9 +10,9 @@ import (
 
 // StudentRepository defines the contract for database operations (in student_repo.go)
 type StudentRepository interface {
-	BatchCreate(ctx context.Context, students []Student) ([]Student, int, error)
-	BatchDelete(ctx context.Context, ids []int) (int64, error)
-	BatchUpdate(ctx context.Context, updates []BatchUpdateStudentItem) ([]Student, int, error)
+	BulkCreate(ctx context.Context, students []Student) ([]Student, int, error)
+	BulkDelete(ctx context.Context, ids []int) (int64, error)
+	BulkUpdate(ctx context.Context, updates []BatchUpdateStudentItem) ([]Student, int, error)
 	BulkUpdateClass(ctx context.Context, ids []int, classID int) (int64, error)
 	Create(ctx context.Context, student *Student) error
 	Delete(ctx context.Context, id int) error
