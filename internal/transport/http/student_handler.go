@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -114,8 +113,10 @@ func (h *StudentHandler) HandleBatchDelete(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *StudentHandler) HandleBatchUpdate(w http.ResponseWriter, r *http.Request) {
+	// Instantiate a variable to hold the payload
 	var input domain.BatchUpdateStudentInput
 
+	// Decode the body and store in the variable
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
 		return
@@ -131,13 +132,14 @@ func (h *StudentHandler) HandleBatchUpdate(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Execute the db operation
 	updatedStudents, total, err := h.repo.BatchUpdate(r.Context(), input.Students)
 	if err != nil {
-		fmt.Printf("[DEBUG] error: %v\n", err)
 		sendError(w, http.StatusInternalServerError, "Failed to update students", nil)
 		return
 	}
 
+	// Format the results
 	result := BatchResult[domain.Student]{
 		Items: updatedStudents,
 		Meta: BatchMeta{
@@ -150,13 +152,16 @@ func (h *StudentHandler) HandleBatchUpdate(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *StudentHandler) HandleBulkUpdateClass(w http.ResponseWriter, r *http.Request) {
+	// Instantiate a variable to hold the payload
 	var input domain.BulkUpdateClassInput
 
+	// Decode te JSON payload
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
 		return
 	}
 
+	// Execute the db operation
 	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
@@ -166,6 +171,7 @@ func (h *StudentHandler) HandleBulkUpdateClass(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// Obtain the number of affected rows
 	rowsAffected, err := h.repo.BulkUpdateClass(r.Context(), input.StudentIDs, input.ClassID)
 	if err != nil {
 		if errors.Is(err, domain.ErrClassNotFound) {
@@ -176,6 +182,7 @@ func (h *StudentHandler) HandleBulkUpdateClass(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// Format the results
 	result := map[string]any{
 		"rows_affected": rowsAffected,
 		"class_id":      input.ClassID,

@@ -115,14 +115,22 @@ func (r *studentRepo) BatchUpdate(ctx context.Context, updates []domain.BatchUpd
 		return []domain.Student{}, 0, nil
 	}
 
+	// Start the database transaction
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return nil, 0, fmt.Errorf("studentRepo.BatchUpdate begin tx: %w", err)
 	}
+
+	// Ensure rollback should an error occur
 	defer tx.Rollback()
 
+	// Instantiate a caser for data normalization
 	caser := cases.Title(language.English)
+
+	// Generate timestamp
 	now := time.Now().UTC()
+
+	// Make a slice to hold updated students
 	updatedStudents := make([]domain.Student, 0, len(updates))
 
 	query := `
@@ -190,7 +198,7 @@ func (r *studentRepo) BulkUpdateClass(ctx context.Context, ids []int, classID in
 		return 0, nil
 	}
 
-	// 1. Verify target class exists
+	// Verify target class exists
 	var exists bool
 	checkQuery := "SELECT EXISTS(SELECT 1 FROM classes WHERE id = ?)"
 	if err := r.db.GetContext(ctx, &exists, checkQuery, classID); err != nil {
@@ -200,7 +208,7 @@ func (r *studentRepo) BulkUpdateClass(ctx context.Context, ids []int, classID in
 		return 0, domain.ErrClassNotFound
 	}
 
-	// 2. Perform bulk update
+	// Perform bulk update
 	rawQuery := "UPDATE students SET class_id = ?, updated_at = ? WHERE id IN (?)"
 	now := time.Now().UTC()
 
@@ -211,11 +219,13 @@ func (r *studentRepo) BulkUpdateClass(ctx context.Context, ids []int, classID in
 
 	query = r.db.Rebind(query)
 
+	// Execute the db query
 	result, err := r.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return 0, fmt.Errorf("studentRepo.BulkUpdateClass execute: %w", err)
 	}
 
+	// Obtain the number of updated rows
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return 0, fmt.Errorf("studentRepo.BulkUpdateClass rows affected: %w", err)
