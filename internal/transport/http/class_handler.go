@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -29,6 +30,7 @@ func (h *ClassHandler) ClassRoutes() chi.Router {
 
 	r.Get("/", h.HandleList)
 	r.Post("/", h.HandleCreate)
+	r.Get("/{id}/students", h.HandleListStudentsByClassId)
 	r.Delete("/{id}", h.HandleDelete)
 	r.Get("/{id}", h.HandleGetById)
 	r.Patch("/{id}", h.HandleUpdate)
@@ -168,6 +170,66 @@ func (h *ClassHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sendSuccess(w, http.StatusOK, "Fetched classes successfully", result)
+}
+
+func (h *ClassHandler) HandleListStudentsByClassId(w http.ResponseWriter, r *http.Request) {
+	// Parse query parameters from r.URL.Query()
+	queryParams := r.URL.Query()
+	idStr := chi.URLParam(r, "id")
+	limitStr := queryParams.Get("limit")
+	pageStr := queryParams.Get("page")
+
+	// Defaults
+	var classId int
+	limit := 100
+	page := 1
+
+	// Convert string query params to int
+	if parsedId, err := strconv.Atoi(idStr); err == nil && parsedId > 0 {
+		classId = parsedId
+	}
+
+	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+		limit = l
+	}
+
+	if limit > 200 {
+		limit = 200
+	}
+
+	if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+		page = p
+	}
+
+	// Calculate the database offset derived from page number
+	offset := (page - 1) * limit
+
+	// Call the repository with context and parsed pagination
+	students, totalItems, err := h.repo.ListStudentsByClassId(r.Context(), classId, limit, offset)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "Failed to fetch students", nil)
+		return
+	}
+
+	// Calculate total pages
+	totalPages := 0
+	if totalPages > 0 {
+		totalPages = (totalItems + limit - 1) / limit
+	}
+
+	result := PaginatedResult[domain.Student]{
+		Items: students,
+		Meta: PaginatedMeta{
+			Page:       page,
+			Limit:      limit,
+			Count:      len(students),
+			TotalItems: totalItems,
+			TotalPages: totalPages,
+		},
+	}
+
+	// Returns a [] instead of null if empty because the repository initializes an empty slice
+	sendSuccess(w, http.StatusOK, fmt.Sprintf("Fetched students from class %v successfully", classId), result)
 }
 
 func (h *ClassHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {

@@ -10,6 +10,7 @@ type ClassRepository interface {
 	Create(ctx context.Context, class *Class) error
 	Delete(ctx context.Context, id int) error
 	GetById(ctx context.Context, id int) (*Class, error)
+	ListStudentsByClassId(ctx context.Context, classID int, limit int, offset int) ([]Student, int, error)
 	List(ctx context.Context, limit int, offset int) ([]Class, int, error)
 	Update(ctx context.Context, id int, input PatchClassInput) (*Class, error)
 }

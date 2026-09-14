@@ -121,6 +121,30 @@ func (r *classRepo) List(ctx context.Context, limit int, offset int) ([]domain.C
 	return classes, totalItems, nil
 }
 
+// ListStudentsByClassId retrieves all students assigned to a specific class ID
+func (r *classRepo) ListStudentsByClassId(ctx context.Context, classID int, limit int, offset int) ([]domain.Student, int, error) {
+	// Make an empty slice to hold students
+	students := make([]domain.Student, 0)
+
+	// Get the total count across the entire table
+	var totalItems int
+	countQuery := "SELECT COUNT(*) FROM students"
+	if err := r.db.GetContext(ctx, &totalItems, countQuery); err != nil {
+		return nil, 0, fmt.Errorf("classRepo.ListStudentByClassId count: %w", err)
+	}
+
+	// Get all columns from the table students, where they have a specific class_id, ordered by their student id
+	query := "SELECT * FROM students WHERE class_id = ? ORDER BY id LIMIT ? OFFSET ?"
+
+	// Execute the db operation
+	err := r.db.SelectContext(ctx, &students, query, classID, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("studentRepo.GetByClassID fetch: %w", err)
+	}
+
+	return students, totalItems, nil
+}
+
 func (r *classRepo) Update(ctx context.Context, id int, input domain.PatchClassInput) (*domain.Class, error) {
 	// Fetch the current record from the db
 	class, err := r.GetById(ctx, id)
