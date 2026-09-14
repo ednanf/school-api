@@ -40,8 +40,6 @@ func (h *StudentHandler) StudentRoutes() chi.Router {
 	return r
 }
 
-// TODO: Make an endpoint to list all students in a specific class `/students/class/{id}`
-
 func (h *StudentHandler) HandleBulkCreate(w http.ResponseWriter, r *http.Request) {
 	// Instantiate a variable to hold the payload according to the DTO (for validation and structure)
 	var input domain.BatchCreateStudentInput
