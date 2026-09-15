@@ -13,7 +13,6 @@ import (
 )
 
 // TeacherHandler contains `repo` with a way to communicate with the database and the pointer to the validator instantiated in `main.go`
-
 type TeacherHandler struct {
 	repo     domain.TeacherRepository
 	validate *validator.Validate
