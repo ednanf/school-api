@@ -80,6 +80,7 @@ func (r *teacherRepo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
+// TODO: finish repo methods
 func (r *teacherRepo) GetById(ctx context.Context, id int) (*domain.Teacher, error) {
 	return nil, nil
 }
