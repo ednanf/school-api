@@ -92,8 +92,28 @@ func (h *TeacherHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TeacherHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
+	// Obtain id and convert to int
 	idStr := chi.URLParam(r, "id")
-	sendSuccess(w, http.StatusOK, "Get by id hit", idStr)
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid teacher ID", nil)
+		return
+	}
+
+	// Search for the teacher
+	teacher, err := h.repo.GetById(r.Context(), id)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "Database error", nil)
+		return
+	}
+
+	// If the teacher does not exist
+	if teacher == nil {
+		sendError(w, http.StatusNotFound, "Teacher not found", nil)
+		return
+	}
+
+	sendSuccess(w, http.StatusOK, "Teacher retrieved successfully", teacher)
 }
 
 func (h *TeacherHandler) HandleList(w http.ResponseWriter, r *http.Request) {

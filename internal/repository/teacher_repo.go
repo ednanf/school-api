@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -80,9 +81,24 @@ func (r *teacherRepo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-// TODO: finish repo methods
 func (r *teacherRepo) GetById(ctx context.Context, id int) (*domain.Teacher, error) {
-	return nil, nil
+	var t domain.Teacher
+
+	query := "SELECT * FROM teachers WHERE id = ?"
+
+	// Execute the query and assign it to the variable `t` if successful
+	err := r.db.GetContext(ctx, &t, query, id)
+	if err != nil {
+		// If the ID is not found
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+
+		// Other errors
+		return nil, fmt.Errorf("teacherRepo.GetByID execute: %w", err)
+	}
+
+	return &t, nil
 }
 
 func (r *teacherRepo) List(ctx context.Context, limit int, offset int) ([]domain.Teacher, int, error) {
