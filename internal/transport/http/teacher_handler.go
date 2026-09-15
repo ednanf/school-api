@@ -1,8 +1,11 @@
 package http
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/ednanf/school-api/internal/domain"
 	"github.com/go-chi/chi/v5"
@@ -64,7 +67,29 @@ func (h *TeacherHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TeacherHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "Delete hit", nil)
+	// Extract and convert the URL param into int
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid student ID", nil)
+		return
+	}
+
+	// Execute the db operation
+	if err := h.repo.Delete(r.Context(), id); err != nil {
+		// 404 when teacher was not found
+		if errors.Is(err, sql.ErrNoRows) {
+			sendError(w, http.StatusNotFound, "Student not found", nil)
+			return
+		}
+
+		// 500 for db connection or syntax errors
+		sendError(w, http.StatusInternalServerError, "Failed to delete student", nil)
+		return
+	}
+
+	// 204 status requires no JSON body
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *TeacherHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
