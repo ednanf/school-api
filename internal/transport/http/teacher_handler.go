@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/ednanf/school-api/internal/domain"
@@ -34,7 +35,32 @@ func (h *TeacherHandler) TeacherRoutes() chi.Router {
 }
 
 func (h *TeacherHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "Create hit", nil)
+	// Initialize a Teacher struct
+	var teacher domain.Teacher
+
+	// Decode the JSON body directly into the struct via pointer
+	if err := json.NewDecoder(r.Body).Decode(&teacher); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Validate struct rules using the injected validator instance
+	if err := h.validate.StructCtx(r.Context(), &teacher); err != nil {
+		if validationErrs, ok := err.(validator.ValidationErrors); ok {
+			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
+			return
+		}
+		sendError(w, http.StatusBadRequest, "Validation failed", nil)
+		return
+	}
+
+	// Save to the db via the repository
+	if err := h.repo.Create(r.Context(), &teacher); err != nil {
+		sendError(w, http.StatusInternalServerError, "Failed to create teacher entry", nil)
+		return
+	}
+
+	sendSuccess(w, http.StatusCreated, "Teacher created successfully", teacher)
 }
 
 func (h *TeacherHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
