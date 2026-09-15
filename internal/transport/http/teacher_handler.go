@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -117,9 +118,97 @@ func (h *TeacherHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TeacherHandler) HandleList(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "List hit", nil)
+	// Parse query params
+	queryParams := r.URL.Query()
+	limitStr := queryParams.Get("limit")
+	pageStr := queryParams.Get("page")
+
+	// Defaults
+	limit := 10
+	page := 1
+
+	// Convert string params to integers
+	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+		limit = l
+	}
+
+	// Limit cap
+	if limit > 100 {
+		limit = 100
+	}
+
+	if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+		page = p
+	}
+
+	// Calculate the db offset
+	offset := (page - 1) * limit
+
+	// Execute db operation
+	teachers, totalItems, err := h.repo.List(r.Context(), limit, offset)
+	if err != nil {
+		fmt.Printf("[DEBUG] ERROR: %v", err)
+		sendError(w, http.StatusInternalServerError, "Failed to fetch teachers", nil)
+		return
+	}
+
+	// Calculate total pages
+	totalPages := 0
+	if totalItems > 0 {
+		totalPages = (totalItems + limit - 1) / limit
+	}
+
+	result := PaginatedResult[domain.Teacher]{
+		Items: teachers,
+		Meta: PaginatedMeta{
+			Page:       page,
+			Limit:      limit,
+			Count:      len(teachers),
+			TotalItems: totalItems,
+			TotalPages: totalPages,
+		},
+	}
+
+	sendSuccess(w, http.StatusOK, "Fetched teachers successfully", result)
 }
 
 func (h *TeacherHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "Update hit", nil)
+	// Extract and convert the id to int
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid teacher ID", nil)
+		return
+	}
+
+	// Decode the request body
+	var input domain.PatchTeacherInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Validate optional field constraints
+	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
+		if validationErrs, ok := err.(validator.ValidationErrors); ok {
+			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
+			return
+		}
+		sendError(w, http.StatusBadRequest, "Validation failed", nil)
+		return
+	}
+
+	// Perform the update
+	updatedTeacher, err := h.repo.Update(r.Context(), id, input)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			sendError(w, http.StatusNotFound, "Teacher not found", nil)
+			return
+		}
+		sendError(w, http.StatusInternalServerError, "Failed to update teacher", nil)
+		return
+	}
+
+	// Return 200 with the updated record
+	sendSuccess(w, http.StatusOK, "Teacher updated successfully", updatedTeacher)
 }

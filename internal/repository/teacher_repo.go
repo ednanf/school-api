@@ -101,10 +101,70 @@ func (r *teacherRepo) GetById(ctx context.Context, id int) (*domain.Teacher, err
 	return &t, nil
 }
 
+// List takes a context, limit and offset and returns a slice, a total and errors
 func (r *teacherRepo) List(ctx context.Context, limit int, offset int) ([]domain.Teacher, int, error) {
-	return nil, 0, nil
+	// Make an empty slice to hold teachers
+	teachers := make([]domain.Teacher, 0)
+
+	// Get the total count across the entire table
+	var totalItems int
+	countQuery := "SELECT COUNT(*) FROM teachers"
+	if err := r.db.GetContext(ctx, &totalItems, countQuery); err != nil {
+		return nil, 0, fmt.Errorf("teacherRepo.List count: %w", err)
+	}
+
+	// Get all columns from the table students, ordered by their ID, and limited to a certain number
+	query := "SELECT * FROM teachers ORDER BY id LIMIT ? OFFSET ?"
+
+	// Execute the db operation
+	err := r.db.SelectContext(ctx, &teachers, query, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("teacherRepo.List fetch: %w", err)
+	}
+
+	// Return results to be used
+	return teachers, totalItems, nil
 }
 
 func (r *teacherRepo) Update(ctx context.Context, id int, input domain.PatchTeacherInput) (*domain.Teacher, error) {
-	return nil, nil
+	// Fetch the current record from db
+	teacher, err := r.GetById(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("teacherRepo.Update fetch: %w", err)
+	}
+
+	// Overwrite only fields provided in the PATCH payload
+	if input.FirstName != nil {
+		teacher.FirstName = *input.FirstName
+	}
+	if input.LastName != nil {
+		teacher.LastName = *input.LastName
+	}
+	if input.Email != nil {
+		teacher.Email = *input.Email
+	}
+
+	// Normalize the entity as a whole
+	caser := cases.Title(language.English)
+	teacher.Normalize(caser)
+
+	// Apply timestamp
+	teacher.UpdatedAt = time.Now().UTC()
+
+	query := `
+		UPDATE teachers SET
+			first_name = :first_name,
+			last_name = :last_name,
+			email = :email,
+			updated_at = :updated_at
+		WHERE id = :id
+	`
+
+	// Execute the SQL query using sqlx named placeholders
+	_, err = r.db.NamedExecContext(ctx, query, teacher)
+	if err != nil {
+		return nil, fmt.Errorf("teacherRepo.Update execute: %w", err)
+	}
+
+	return teacher, nil
 }
