@@ -110,7 +110,7 @@ func (r *studentRepo) BulkDelete(ctx context.Context, ids []int) (int64, error) 
 }
 
 // BulkUpdate receives a slice of batch inputs and updates each student record in a single transaction.
-func (r *studentRepo) BulkUpdate(ctx context.Context, updates []domain.BatchUpdateStudentItem) ([]domain.Student, int, error) {
+func (r *studentRepo) BulkUpdate(ctx context.Context, updates []domain.BulkUpdateStudentItem) ([]domain.Student, int, error) {
 	if len(updates) == 0 {
 		return []domain.Student{}, 0, nil
 	}

@@ -42,7 +42,7 @@ func (h *StudentHandler) StudentRoutes() chi.Router {
 
 func (h *StudentHandler) HandleBulkCreate(w http.ResponseWriter, r *http.Request) {
 	// Instantiate a variable to hold the payload according to the DTO (for validation and structure)
-	var input domain.BatchCreateStudentInput
+	var input domain.BulkCreateStudentInput
 
 	// Decode the body and store into the variable
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -81,7 +81,7 @@ func (h *StudentHandler) HandleBulkCreate(w http.ResponseWriter, r *http.Request
 
 func (h *StudentHandler) HandleBulkDelete(w http.ResponseWriter, r *http.Request) {
 	// Instantiate a variable to hold the IDs to be deleted
-	var input domain.BatchDeleteStudentInput
+	var input domain.BulkDeleteStudentInput
 
 	// Decode the body and store in the variable
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -114,7 +114,7 @@ func (h *StudentHandler) HandleBulkDelete(w http.ResponseWriter, r *http.Request
 
 func (h *StudentHandler) HandleBulkUpdate(w http.ResponseWriter, r *http.Request) {
 	// Instantiate a variable to hold the payload
-	var input domain.BatchUpdateStudentInput
+	var input domain.BulkUpdateStudentInput
 
 	// Decode the body and store in the variable
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {

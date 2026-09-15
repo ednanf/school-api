@@ -12,7 +12,7 @@ import (
 type StudentRepository interface {
 	BulkCreate(ctx context.Context, students []Student) ([]Student, int, error)
 	BulkDelete(ctx context.Context, ids []int) (int64, error)
-	BulkUpdate(ctx context.Context, updates []BatchUpdateStudentItem) ([]Student, int, error)
+	BulkUpdate(ctx context.Context, updates []BulkUpdateStudentItem) ([]Student, int, error)
 	BulkUpdateClass(ctx context.Context, ids []int, classID int) (int64, error)
 	Create(ctx context.Context, student *Student) error
 	Delete(ctx context.Context, id int) error
@@ -41,26 +41,26 @@ type PatchStudentInput struct {
 	ClassID   *int    `json:"class_id" validate:"omitempty,gt=0"`
 }
 
-// BatchCreateStudentInput defines the JSON payload for inserting multiple students
-type BatchCreateStudentInput struct {
+// BulkCreateStudentInput defines the JSON payload for inserting multiple students
+type BulkCreateStudentInput struct {
 	// `dive` tells validator to iterate into the slice and run field validation on each individual element
 	Students []Student `json:"students" validate:"required,min=1,max=2000,dive"`
 }
 
-// BatchDeleteStudentInput defines the JSON payload for deleting multiple students by ID
-type BatchDeleteStudentInput struct {
+// BulkDeleteStudentInput defines the JSON payload for deleting multiple students by ID
+type BulkDeleteStudentInput struct {
 	IDs []int `json:"ids" validate:"required,min=1,max=100,dive,gt=0"`
 }
 
-// BatchUpdateStudentItem is a single item inside the batch update payload
-type BatchUpdateStudentItem struct {
+// BulkUpdateStudentItem is a single item inside the batch update payload
+type BulkUpdateStudentItem struct {
 	ID int `json:"id" validate:"required,gt=0"`
 	PatchStudentInput
 }
 
-// BatchUpdateStudentInput is a wrapper DTO for batch update endpoint
-type BatchUpdateStudentInput struct {
-	Students []BatchUpdateStudentItem `json:"students" validate:"required,min=1,max=1000,dive"`
+// BulkUpdateStudentInput is a wrapper DTO for batch update endpoint
+type BulkUpdateStudentInput struct {
+	Students []BulkUpdateStudentItem `json:"students" validate:"required,min=1,max=1000,dive"`
 }
 
 // BulkUpdateClassInput defines the payload for reassigning multiple students to a new class
