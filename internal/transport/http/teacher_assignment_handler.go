@@ -1,7 +1,11 @@
 package http
 
 import (
+	"database/sql"
+	"encoding/json"
+	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/ednanf/school-api/internal/domain"
 	"github.com/go-chi/chi/v5"
@@ -33,11 +37,58 @@ func (h *TeacherAssignmentHandler) TeacherAssignmentRoutes() chi.Router {
 }
 
 func (h *TeacherAssignmentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "create hit", nil)
+	// Initialize a struct
+	var assignment domain.TeacherAssignment
+
+	// Decode the JSON body directly into the struct
+	if err := json.NewDecoder(r.Body).Decode(&assignment); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Validate struct rules using injected validator instance
+	if err := h.validate.StructCtx(r.Context(), &assignment); err != nil {
+		if validationErrs, ok := err.(validator.ValidationErrors); ok {
+			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
+			return
+		}
+		sendError(w, http.StatusBadRequest, "Validation failed", nil)
+		return
+	}
+
+	// Save to the db via the repository
+	if err := h.repo.Create(r.Context(), &assignment); err != nil {
+		sendError(w, http.StatusInternalServerError, "Failed to create assignment entry", nil)
+		return
+	}
+
+	// Return 201 Created with the full record
+	sendSuccess(w, http.StatusCreated, "Assignment created successfully", assignment)
 }
 
 func (h *TeacherAssignmentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "delete hit", nil)
+	// Extract and convert the URL param to int
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid assignment ID", nil)
+		return
+	}
+
+	// Execute the db operation
+	if err = h.repo.Delete(r.Context(), id); err != nil {
+		// 404 when not found
+		if errors.Is(err, sql.ErrNoRows) {
+			sendError(w, http.StatusNotFound, "Assignment not found", nil)
+			return
+		}
+		// 500 for other errors
+		sendError(w, http.StatusInternalServerError, "Failed to delete assignment", nil)
+		return
+	}
+
+	// 204 requires no JSON body
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *TeacherAssignmentHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
