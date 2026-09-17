@@ -14,10 +14,10 @@ type StudentRepository interface {
 	BulkDelete(ctx context.Context, ids []int) (int64, error)
 	BulkUpdate(ctx context.Context, updates []BulkUpdateStudentItem) ([]Student, int, error)
 	BulkUpdateClass(ctx context.Context, ids []int, classID int) (int64, error)
-	Create(ctx context.Context, student *Student) error
+	Create(ctx context.Context, s *Student) error
 	Delete(ctx context.Context, id int) error
-	GetByID(ctx context.Context, id int) (*Student, error)
-	List(ctx context.Context, limit int, offset int) ([]Student, int, error)
+	GetByID(ctx context.Context, id int) (*PopulatedStudent, error)
+	List(ctx context.Context, limit int, offset int) ([]PopulatedStudent, int, error)
 	Update(ctx context.Context, id int, input PatchStudentInput) (*Student, error)
 }
 
@@ -30,6 +30,17 @@ type Student struct {
 	ClassID   int       `json:"class_id" db:"class_id" validate:"required,gt=0"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
+}
+
+// PopulatedStudent represents a student with embedded class metadata for GET responses
+type PopulatedStudent struct {
+	ID        int          `json:"id" db:"id"`
+	FirstName string       `json:"first_name" db:"first_name"`
+	LastName  string       `json:"last_name" db:"last_name"`
+	Email     string       `json:"email" db:"email"`
+	Class     ClassSummary `json:"class" db:"class"`
+	CreatedAt time.Time    `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time    `json:"updated_at" db:"updated_at"`
 }
 
 // PatchStudentInput defines the JSON payload for inserting one student

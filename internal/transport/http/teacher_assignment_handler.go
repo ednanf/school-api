@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -100,7 +99,7 @@ func (h *TeacherAssignmentHandler) HandleGetById(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Search for the assignment
+	// Search for the assignment (returns domain.PopulatedTeacherAssignment)
 	t, err := h.repo.GetById(r.Context(), id)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Database error", nil)
@@ -142,10 +141,9 @@ func (h *TeacherAssignmentHandler) HandleList(w http.ResponseWriter, r *http.Req
 	// Calculate the db offset
 	offset := (page - 1) * limit
 
-	// Execute the operation
+	// Execute the operation (returns []domain.PopulatedTeacherAssignment)
 	assignments, totalItems, err := h.repo.List(r.Context(), limit, offset)
 	if err != nil {
-		fmt.Println(err)
 		sendError(w, http.StatusInternalServerError, "Failed to fetch assignments", nil)
 		return
 	}

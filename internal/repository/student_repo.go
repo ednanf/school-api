@@ -39,9 +39,9 @@ func (r *studentRepo) BulkCreate(ctx context.Context, students []domain.Student)
 	defer tx.Rollback()
 
 	query := `
-        INSERT INTO students (first_name, last_name, email, class_id, created_at, updated_at)
-        VALUES (:first_name, :last_name, :email, :class_id, :created_at, :updated_at)
-    `
+		INSERT INTO students (first_name, last_name, email, class_id, created_at, updated_at)
+		VALUES (:first_name, :last_name, :email, :class_id, :created_at, :updated_at)
+	`
 	caser := cases.Title(language.English)
 	now := time.Now().UTC()
 	total := 0
@@ -148,7 +148,7 @@ func (r *studentRepo) BulkUpdate(ctx context.Context, updates []domain.BulkUpdat
 	for _, u := range updates {
 		// Fetch current record inside the active transaction
 		var student domain.Student
-		fetchQuery := "SELECT * FROM students WHERE id = ?"
+		fetchQuery := "SELECT id, first_name, last_name, email, class_id, created_at, updated_at FROM students WHERE id = ?"
 		if err := tx.GetContext(ctx, &student, fetchQuery, u.ID); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, 0, fmt.Errorf("studentRepo.BatchUpdate student ID %d not found: %w", u.ID, sql.ErrNoRows)
@@ -236,9 +236,9 @@ func (r *studentRepo) BulkUpdateClass(ctx context.Context, ids []int, classID in
 
 func (r *studentRepo) Create(ctx context.Context, s *domain.Student) error {
 	query := `
-        INSERT INTO students (first_name, last_name, email, class_id, created_at, updated_at)
-        VALUES (:first_name, :last_name, :email, :class_id, :created_at, :updated_at)
-    `
+		INSERT INTO students (first_name, last_name, email, class_id, created_at, updated_at)
+		VALUES (:first_name, :last_name, :email, :class_id, :created_at, :updated_at)
+	`
 
 	// Initiate a caser to normalize capitalization
 	caser := cases.Title(language.English)
@@ -292,10 +292,19 @@ func (r *studentRepo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *studentRepo) GetByID(ctx context.Context, id int) (*domain.Student, error) {
-	var s domain.Student
+func (r *studentRepo) GetByID(ctx context.Context, id int) (*domain.PopulatedStudent, error) {
+	var s domain.PopulatedStudent
 
-	query := "SELECT * FROM students WHERE id = ?"
+	query := `
+		SELECT
+			s.id, s.first_name, s.last_name, s.email, s.created_at, s.updated_at,
+			c.id AS "class.id",
+			c.grade AS "class.grade",
+			c.letter AS "class.letter"
+		FROM students s
+		INNER JOIN classes c ON s.class_id = c.id
+		WHERE s.id = ?
+	`
 
 	// Execute query and assign it to the variable `s` if successful
 	err := r.db.GetContext(ctx, &s, query, id)
@@ -313,9 +322,9 @@ func (r *studentRepo) GetByID(ctx context.Context, id int) (*domain.Student, err
 }
 
 // List takes a context, limit and offset and returns a slice, a total and errors
-func (r *studentRepo) List(ctx context.Context, limit int, offset int) ([]domain.Student, int, error) {
+func (r *studentRepo) List(ctx context.Context, limit int, offset int) ([]domain.PopulatedStudent, int, error) {
 	// Make an empty slice to hold students
-	students := make([]domain.Student, 0)
+	students := make([]domain.PopulatedStudent, 0)
 
 	// Get the total count across the entire table
 	var totalItems int
@@ -324,8 +333,17 @@ func (r *studentRepo) List(ctx context.Context, limit int, offset int) ([]domain
 		return nil, 0, fmt.Errorf("studentRepo.List count: %w", err)
 	}
 
-	// Get all columns from the table students, ordered by their ID, and limited to a certain number
-	query := "SELECT * FROM students ORDER BY id LIMIT ? OFFSET ?"
+	// Get populated columns from students joined with classes, ordered by student ID
+	query := `
+		SELECT
+			s.id, s.first_name, s.last_name, s.email, s.created_at, s.updated_at,
+			c.id AS "class.id",
+			c.grade AS "class.grade",
+			c.letter AS "class.letter"
+		FROM students s
+		INNER JOIN classes c ON s.class_id = c.id
+		ORDER BY s.id LIMIT ? OFFSET ?
+	`
 
 	// Execute the db operation
 	err := r.db.SelectContext(ctx, &students, query, limit, offset)
@@ -338,9 +356,13 @@ func (r *studentRepo) List(ctx context.Context, limit int, offset int) ([]domain
 }
 
 func (r *studentRepo) Update(ctx context.Context, id int, input domain.PatchStudentInput) (*domain.Student, error) {
-	// Fetch current record from DB
-	student, err := r.GetByID(ctx, id)
-	if err != nil {
+	// Fetch current record from DB using a flat query for mutation state
+	var student domain.Student
+	fetchQuery := "SELECT id, first_name, last_name, email, class_id, created_at, updated_at FROM students WHERE id = ?"
+	if err := r.db.GetContext(ctx, &student, fetchQuery, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, sql.ErrNoRows
+		}
 		return nil, fmt.Errorf("studentRepo.Update fetch: %w", err)
 	}
 
@@ -376,10 +398,10 @@ func (r *studentRepo) Update(ctx context.Context, id int, input domain.PatchStud
 	`
 
 	// Execute static SQL query using sqlx named placeholders
-	_, err = r.db.NamedExecContext(ctx, query, student)
+	_, err := r.db.NamedExecContext(ctx, query, student)
 	if err != nil {
 		return nil, fmt.Errorf("studentRepo.Update execute: %w", err)
 	}
 
-	return student, nil
+	return &student, nil
 }
