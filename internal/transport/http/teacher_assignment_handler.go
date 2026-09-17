@@ -93,7 +93,25 @@ func (h *TeacherAssignmentHandler) HandleDelete(w http.ResponseWriter, r *http.R
 
 func (h *TeacherAssignmentHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
-	sendSuccess(w, http.StatusOK, "get by id hit", idStr)
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid Assignment ID", nil)
+		return
+	}
+
+	// Search for the assignment
+	t, err := h.repo.GetById(r.Context(), id)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "Database error", nil)
+		return
+	}
+
+	if t == nil {
+		sendError(w, http.StatusNotFound, "Assignment not found", nil)
+		return
+	}
+
+	sendSuccess(w, http.StatusOK, "Assignment retrieved successfully", t)
 }
 
 func (h *TeacherAssignmentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
