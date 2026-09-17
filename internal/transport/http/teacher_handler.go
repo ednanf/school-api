@@ -114,7 +114,7 @@ func (h *TeacherHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendSuccess(w, http.StatusOK, "Teacher retrieved successfully", teacher)
+	sendSuccess(w, http.StatusOK, "", teacher)
 }
 
 func (h *TeacherHandler) HandleList(w http.ResponseWriter, r *http.Request) {
@@ -158,18 +158,15 @@ func (h *TeacherHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 		totalPages = (totalItems + limit - 1) / limit
 	}
 
-	result := PaginatedResult[domain.Teacher]{
-		Items: teachers,
-		Meta: PaginatedMeta{
-			Page:       page,
-			Limit:      limit,
-			Count:      len(teachers),
-			TotalItems: totalItems,
-			TotalPages: totalPages,
-		},
+	meta := PaginatedMeta{
+		Page:       page,
+		Limit:      limit,
+		Count:      len(teachers),
+		TotalItems: totalItems,
+		TotalPages: totalPages,
 	}
 
-	sendSuccess(w, http.StatusOK, "Fetched teachers successfully", result)
+	sendPaginated(w, http.StatusOK, teachers, meta)
 }
 
 func (h *TeacherHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
@@ -210,5 +207,5 @@ func (h *TeacherHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return 200 with the updated record
-	sendSuccess(w, http.StatusOK, "Teacher updated successfully", updatedTeacher)
+	sendSuccess(w, http.StatusOK, "", updatedTeacher)
 }

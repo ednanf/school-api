@@ -14,54 +14,51 @@ type PaginatedMeta struct {
 	TotalPages int `json:"total_pages"`
 }
 
-// PaginatedResult represents a generic paginated API response wrapping items of type T and response metadata.
-type PaginatedResult[T any] struct {
-	Items []T           `json:"items"`
-	Meta  PaginatedMeta `json:"meta"`
-}
-
-// APIResponse defines the standard JSON envelope
+// APIResponse defines the standard JSON envelope with optional fields.
 type APIResponse struct {
-	Status string `json:"status"`
-	Data   any    `json:"data"`
+	Status  string         `json:"status"`
+	Message string         `json:"message,omitempty"` // Omitted for standard 200 OK
+	Data    any            `json:"data,omitempty"`
+	Meta    *PaginatedMeta `json:"meta,omitempty"`
+	Details any            `json:"details,omitempty"`
 }
 
-// SuccessPayload enforces that every success response has a message and data
-type SuccessPayload struct {
-	Message string `json:"message"`
-	Result  any    `json:"result,omitempty"` // omitempty hides field if nil (e.g. for simple 200 OK)
-}
-
-// ErrorPayload enforces message + optional error details
-type ErrorPayload struct {
-	Message string `json:"message"`
-	Details any    `json:"details,omitempty"`
-}
-
-// sendSuccess handles all 2xx responses
-func sendSuccess(w http.ResponseWriter, statusCode int, message string, result any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-
-	json.NewEncoder(w).Encode(APIResponse{
+// sendSuccess handles standard success responses.
+// Automatically omits "message" for 200 OK responses.
+func sendSuccess(w http.ResponseWriter, statusCode int, message string, data any) {
+	resp := APIResponse{
 		Status: "success",
-		Data: SuccessPayload{
-			Message: message,
-			Result:  result,
-		},
+		Data:   data,
+	}
+
+	// Only include message for non-200 OK success statuses (e.g., 201 Created)
+	if statusCode != http.StatusOK {
+		resp.Message = message
+	}
+
+	writeJSON(w, statusCode, resp)
+}
+
+// sendPaginated handles paginated array responses (typically 200 OK).
+func sendPaginated[T any](w http.ResponseWriter, statusCode int, items []T, meta PaginatedMeta) {
+	writeJSON(w, statusCode, APIResponse{
+		Status: "success",
+		Data:   items,
+		Meta:   &meta,
 	})
 }
 
-// sendError handles 4xx and 5xx error responses
+// sendError handles 4xx and 5xx error responses.
 func sendError(w http.ResponseWriter, statusCode int, message string, details any) {
+	writeJSON(w, statusCode, APIResponse{
+		Status:  "error",
+		Message: message,
+		Details: details,
+	})
+}
+
+func writeJSON(w http.ResponseWriter, statusCode int, payload APIResponse) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-
-	json.NewEncoder(w).Encode(APIResponse{
-		Status: "error",
-		Data: ErrorPayload{
-			Message: message,
-			Details: details,
-		},
-	})
+	_ = json.NewEncoder(w).Encode(payload)
 }

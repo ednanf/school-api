@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -64,7 +63,7 @@ func (h *ClassHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return 201 with the full record
+	// Return 201 with the full record (includes message)
 	sendSuccess(w, http.StatusCreated, "Class created successfully", class)
 }
 
@@ -115,7 +114,7 @@ func (h *ClassHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendSuccess(w, http.StatusOK, "Class retrieved successfully", class)
+	sendSuccess(w, http.StatusOK, "", class)
 }
 
 func (h *ClassHandler) HandleList(w http.ResponseWriter, r *http.Request) {
@@ -158,18 +157,15 @@ func (h *ClassHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 		totalPages = (totalItems + limit - 1) / limit
 	}
 
-	result := PaginatedResult[domain.Class]{
-		Items: classes,
-		Meta: PaginatedMeta{
-			Page:       page,
-			Limit:      limit,
-			Count:      len(classes),
-			TotalItems: totalItems,
-			TotalPages: totalPages,
-		},
+	meta := PaginatedMeta{
+		Page:       page,
+		Limit:      limit,
+		Count:      len(classes),
+		TotalItems: totalItems,
+		TotalPages: totalPages,
 	}
 
-	sendSuccess(w, http.StatusOK, "Fetched classes successfully", result)
+	sendPaginated(w, http.StatusOK, classes, meta)
 }
 
 func (h *ClassHandler) HandleListStudentsByClassId(w http.ResponseWriter, r *http.Request) {
@@ -213,23 +209,20 @@ func (h *ClassHandler) HandleListStudentsByClassId(w http.ResponseWriter, r *htt
 
 	// Calculate total pages
 	totalPages := 0
-	if totalPages > 0 {
+	if totalItems > 0 {
 		totalPages = (totalItems + limit - 1) / limit
 	}
 
-	result := PaginatedResult[domain.Student]{
-		Items: students,
-		Meta: PaginatedMeta{
-			Page:       page,
-			Limit:      limit,
-			Count:      len(students),
-			TotalItems: totalItems,
-			TotalPages: totalPages,
-		},
+	meta := PaginatedMeta{
+		Page:       page,
+		Limit:      limit,
+		Count:      len(students),
+		TotalItems: totalItems,
+		TotalPages: totalPages,
 	}
 
 	// Returns a [] instead of null if empty because the repository initializes an empty slice
-	sendSuccess(w, http.StatusOK, fmt.Sprintf("Fetched students from class %v successfully", classId), result)
+	sendPaginated(w, http.StatusOK, students, meta)
 }
 
 func (h *ClassHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
@@ -269,5 +262,5 @@ func (h *ClassHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendSuccess(w, http.StatusOK, "Class updated successfully", updatedClass)
+	sendSuccess(w, http.StatusOK, "", updatedClass)
 }

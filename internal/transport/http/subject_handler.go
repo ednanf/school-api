@@ -113,7 +113,7 @@ func (h *SubjectHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendSuccess(w, http.StatusOK, "Subject retrieved successfully", subject)
+	sendSuccess(w, http.StatusOK, "", subject)
 }
 
 func (h *SubjectHandler) HandleList(w http.ResponseWriter, r *http.Request) {
@@ -156,18 +156,15 @@ func (h *SubjectHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 		totalPages = (totalItems + limit - 1) / limit
 	}
 
-	result := PaginatedResult[domain.Subject]{
-		Items: subjects,
-		Meta: PaginatedMeta{
-			Page:       page,
-			Limit:      limit,
-			Count:      len(subjects),
-			TotalItems: totalItems,
-			TotalPages: totalPages,
-		},
+	meta := PaginatedMeta{
+		Page:       page,
+		Limit:      limit,
+		Count:      len(subjects),
+		TotalItems: totalItems,
+		TotalPages: totalPages,
 	}
 
-	sendSuccess(w, http.StatusOK, "Fetched subjects successfully", result)
+	sendPaginated(w, http.StatusOK, subjects, meta)
 }
 
 func (h *SubjectHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
@@ -203,10 +200,9 @@ func (h *SubjectHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 			sendError(w, http.StatusNotFound, "Subject not found", nil)
 			return
 		}
-		fmt.Printf("[DEBUG] error: %v\n", err)
 		sendError(w, http.StatusInternalServerError, "Failed to update the class", nil)
 		return
 	}
 
-	sendSuccess(w, http.StatusOK, "Subject updated successfully", updatedSubject)
+	sendSuccess(w, http.StatusOK, "", updatedSubject)
 }

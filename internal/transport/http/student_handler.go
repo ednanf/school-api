@@ -107,7 +107,7 @@ func (h *StudentHandler) HandleBulkDelete(w http.ResponseWriter, r *http.Request
 	}
 
 	// Send a simple 200 with the number of deleted students
-	sendSuccess(w, http.StatusOK, "Batch deletion successful", map[string]any{
+	sendSuccess(w, http.StatusOK, "", map[string]any{
 		"total": deletedCount,
 	})
 }
@@ -148,7 +148,7 @@ func (h *StudentHandler) HandleBulkUpdate(w http.ResponseWriter, r *http.Request
 		},
 	}
 
-	sendSuccess(w, http.StatusOK, "Students updated successfully", result)
+	sendSuccess(w, http.StatusOK, "", result)
 }
 
 func (h *StudentHandler) HandleBulkUpdateClass(w http.ResponseWriter, r *http.Request) {
@@ -188,7 +188,7 @@ func (h *StudentHandler) HandleBulkUpdateClass(w http.ResponseWriter, r *http.Re
 		"class_id":      input.ClassID,
 	}
 
-	sendSuccess(w, http.StatusOK, "Students class updated successfully", result)
+	sendSuccess(w, http.StatusOK, "", result)
 }
 
 func (h *StudentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
@@ -269,7 +269,7 @@ func (h *StudentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendSuccess(w, http.StatusOK, "Student retrieved successfully", student)
+	sendSuccess(w, http.StatusOK, "", student)
 }
 
 func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
@@ -312,19 +312,16 @@ func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 		totalPages = (totalItems + limit - 1) / limit
 	}
 
-	result := PaginatedResult[domain.Student]{
-		Items: students,
-		Meta: PaginatedMeta{
-			Page:       page,
-			Limit:      limit,
-			Count:      len(students),
-			TotalItems: totalItems,
-			TotalPages: totalPages,
-		},
+	meta := PaginatedMeta{
+		Page:       page,
+		Limit:      limit,
+		Count:      len(students),
+		TotalItems: totalItems,
+		TotalPages: totalPages,
 	}
 
 	// Returns [] instead of null if empty because studentRepo initializes an empty slice
-	sendSuccess(w, http.StatusOK, "Fetched students successfully", result)
+	sendPaginated(w, http.StatusOK, students, meta)
 }
 
 func (h *StudentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
@@ -365,5 +362,5 @@ func (h *StudentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return 200 with the updated record
-	sendSuccess(w, http.StatusOK, "Student updated successfully", updatedStudent)
+	sendSuccess(w, http.StatusOK, "", updatedStudent)
 }
