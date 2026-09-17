@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -144,6 +145,7 @@ func (h *TeacherAssignmentHandler) HandleList(w http.ResponseWriter, r *http.Req
 	// Execute the operation
 	assignments, totalItems, err := h.repo.List(r.Context(), limit, offset)
 	if err != nil {
+		fmt.Println(err)
 		sendError(w, http.StatusInternalServerError, "Failed to fetch assignments", nil)
 		return
 	}

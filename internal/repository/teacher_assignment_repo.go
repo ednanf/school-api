@@ -16,7 +16,7 @@ type taRepo struct {
 	db *sqlx.DB
 }
 
-// NewTeacherAssignmentRepository receives a pointer to the database conneciton pool and returns a domain.TeacherAssignmentRepository
+// NewTeacherAssignmentRepository receives a pointer to the database connection pool and returns a domain.TeacherAssignmentRepository
 func NewTeacherAssignmentRepository(db *sqlx.DB) domain.TeacherAssignmentRepository {
 	return &taRepo{db: db}
 }
@@ -72,40 +72,68 @@ func (r *taRepo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *taRepo) GetById(ctx context.Context, id int) (*domain.TeacherAssignment, error) {
-	var t domain.TeacherAssignment
+func (r *taRepo) GetById(ctx context.Context, id int) (*domain.PopulatedTeacherAssignment, error) {
+	var t domain.PopulatedTeacherAssignment
 
-	query := "SELECT * FROM teacher_assignments WHERE id = ?"
+	query := `
+		SELECT
+			ta.id, ta.created_at, ta.updated_at,
+			t.id AS "teacher.id",
+			t.first_name AS "teacher.first_name",
+			t.last_name AS "teacher.last_name",
+			t.email AS "teacher.email",
+			c.id AS "class.id",
+			c.grade AS "class.grade",
+			c.letter AS "class.letter",
+			s.id AS "subject.id",
+			s.name AS "subject.name"
+		FROM teacher_assignments ta
+		INNER JOIN teachers t ON ta.teacher_id = t.id
+		INNER JOIN classes c ON ta.class_id = c.id
+		INNER JOIN subjects s ON ta.subject_id = s.id
+		WHERE ta.id = ?
+	`
 
-	// Execute query and assign to the variable `t` if successful
 	if err := r.db.GetContext(ctx, &t, query, id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil // not found
 		}
-
-		// Other errors
 		return nil, fmt.Errorf("taRepo.GetByID execute: %w", err)
 	}
 
 	return &t, nil
 }
 
-// List takes a context, limit and offset and returns a slice, a total and errors
-func (r *taRepo) List(ctx context.Context, limit, offset int) ([]domain.TeacherAssignment, int, error) {
-	// Make an empty slice to hold the results
-	assignments := make([]domain.TeacherAssignment, 0)
+// List takes a context, limit and offset and returns a populated slice, a total and errors
+func (r *taRepo) List(ctx context.Context, limit, offset int) ([]domain.PopulatedTeacherAssignment, int, error) {
+	assignments := make([]domain.PopulatedTeacherAssignment, 0)
 
-	// Get the total count across the entire table
 	var totalItems int
 	countQuery := "SELECT COUNT(*) FROM teacher_assignments"
 	if err := r.db.GetContext(ctx, &totalItems, countQuery); err != nil {
 		return nil, 0, fmt.Errorf("taRepo.List count: %w", err)
 	}
 
-	// Get all columns from the table, ordered by ID and limited to a certain number
-	query := "SELECT * FROM teacher_assignments ORDER BY id LIMIT ? OFFSET ?"
+	query := `
+		SELECT
+			ta.id, ta.created_at, ta.updated_at,
+			t.id AS "teacher.id",
+			t.first_name AS "teacher.first_name",
+			t.last_name AS "teacher.last_name",
+			t.email AS "teacher.email",
+			c.id AS "class.id",
+			c.grade AS "class.grade",
+			c.letter AS "class.letter",
+			s.id AS "subject.id",
+			s.name AS "subject.name"
+		FROM teacher_assignments ta
+		INNER JOIN teachers t ON ta.teacher_id = t.id
+		INNER JOIN classes c ON ta.class_id = c.id
+		INNER JOIN subjects s ON ta.subject_id = s.id
+		ORDER BY ta.id ASC
+		LIMIT ? OFFSET ?
+	`
 
-	// Execute the query
 	err := r.db.SelectContext(ctx, &assignments, query, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("taRepo.List fetch: %w", err)
