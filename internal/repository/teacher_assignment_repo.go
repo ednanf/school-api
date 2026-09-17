@@ -92,7 +92,26 @@ func (r *taRepo) GetById(ctx context.Context, id int) (*domain.TeacherAssignment
 
 // List takes a context, limit and offset and returns a slice, a total and errors
 func (r *taRepo) List(ctx context.Context, limit, offset int) ([]domain.TeacherAssignment, int, error) {
-	return nil, 0, nil
+	// Make an empty slice to hold the results
+	assignments := make([]domain.TeacherAssignment, 0)
+
+	// Get the total count across the entire table
+	var totalItems int
+	countQuery := "SELECT COUNT(*) FROM teacher_assignments"
+	if err := r.db.GetContext(ctx, &totalItems, countQuery); err != nil {
+		return nil, 0, fmt.Errorf("taRepo.List count: %w", err)
+	}
+
+	// Get all columns from the table, ordered by ID and limited to a certain number
+	query := "SELECT * FROM teacher_assignments ORDER BY id LIMIT ? OFFSET ?"
+
+	// Execute the query
+	err := r.db.SelectContext(ctx, &assignments, query, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("taRepo.List fetch: %w", err)
+	}
+
+	return assignments, totalItems, nil
 }
 
 func (r *taRepo) Update(ctx context.Context, id int, input domain.PatchTeacherAssignmentInput) (*domain.TeacherAssignment, error) {
