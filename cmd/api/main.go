@@ -77,6 +77,9 @@ func main() {
 	teacherAssignmentRepo := repository.NewTeacherAssignmentRepository(db)
 	teacherAssignmentHandler := transportHttp.NewTeacherAssignmentHandler(teacherAssignmentRepo, validate)
 
+	departmentRepo := repository.NewDepartmentRepository(db)
+	departmentHandler := transportHttp.NewDepartmentHandler(departmentRepo, validate)
+
 	// Mount the routes under a versioned API prefix
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Mount("/students", studentHandler.StudentRoutes())
@@ -84,6 +87,7 @@ func main() {
 		r.Mount("/subjects", subjectHandler.SubjectRoutes())
 		r.Mount("/teachers", teacherHandler.TeacherRoutes())
 		r.Mount("/teacher_assignments", teacherAssignmentHandler.TeacherAssignmentRoutes())
+		r.Mount("/departments", departmentHandler.DepartmentRoutes())
 	})
 
 	log.Printf("[SYSTEM] Server running on port %s...", port)
