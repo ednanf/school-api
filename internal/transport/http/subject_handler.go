@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -58,7 +57,6 @@ func (h *SubjectHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 
 	// Save to the db via the repository
 	if err := h.repo.Create(r.Context(), &subject); err != nil {
-		fmt.Printf("[DEBUG] %v\n", err)
 		sendError(w, http.StatusInternalServerError, "Failed to create subject entry", nil)
 		return
 	}
