@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ednanf/school-api/internal/domain"
 	"github.com/jmoiron/sqlx"
@@ -15,7 +16,23 @@ func NewDepartmentRepository(db *sqlx.DB) domain.DepartmentRepository {
 	return &departmentRepo{db: db}
 }
 
-func (r *departmentRepo) Create(ctx context.Context, d domain.Department) error {
+func (r *departmentRepo) Create(ctx context.Context, d *domain.Department) error {
+	query := `
+		INSERT INTO departments (name, description, created_at, updated_at)
+		VALUES (:name, :description, :created_at, :updated_at)
+	`
+
+	result, err := r.db.NamedExecContext(ctx, query, d)
+	if err != nil {
+		return fmt.Errorf("departmentRepo.Create execute: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("departmentRepo.Create last insert id: %w", err)
+	}
+
+	d.ID = int(id)
 	return nil
 }
 

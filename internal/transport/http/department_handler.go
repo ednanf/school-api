@@ -1,6 +1,8 @@
 package http
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/ednanf/school-api/internal/domain"
@@ -9,12 +11,12 @@ import (
 )
 
 type DepartmentHandler struct {
-	repo     domain.DepartmentRepository
+	service  domain.DepartmentService
 	validate *validator.Validate
 }
 
-func NewDepartmentHandler(repo domain.DepartmentRepository, validate *validator.Validate) *DepartmentHandler {
-	return &DepartmentHandler{repo: repo, validate: validate}
+func NewDepartmentHandler(service domain.DepartmentService, validate *validator.Validate) *DepartmentHandler {
+	return &DepartmentHandler{service: service, validate: validate}
 }
 
 func (h *DepartmentHandler) DepartmentRoutes() chi.Router {
@@ -30,7 +32,30 @@ func (h *DepartmentHandler) DepartmentRoutes() chi.Router {
 }
 
 func (h *DepartmentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "create hit", nil)
+	var department domain.Department
+
+	if err := json.NewDecoder(r.Body).Decode(&department); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	if err := h.validate.StructCtx(r.Context(), &department); err != nil {
+		if validationErrs, ok := err.(validator.ValidationErrors); ok {
+			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
+			return
+		}
+		sendError(w, http.StatusBadRequest, "Validation failed", nil)
+		return
+	}
+
+	// Calls service now, which runs Normalize() + Timestamps -> then calls Repo.Create()
+	if err := h.service.Create(r.Context(), &department); err != nil {
+		fmt.Println(err)
+		sendError(w, http.StatusInternalServerError, "Failed to create department entry", nil)
+		return
+	}
+
+	sendSuccess(w, http.StatusCreated, "Department created successfully", department)
 }
 
 func (h *DepartmentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {

@@ -14,6 +14,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/ednanf/school-api/internal/repository"
+	"github.com/ednanf/school-api/internal/service"
 	transportHttp "github.com/ednanf/school-api/internal/transport/http"
 )
 
@@ -78,7 +79,8 @@ func main() {
 	teacherAssignmentHandler := transportHttp.NewTeacherAssignmentHandler(teacherAssignmentRepo, validate)
 
 	departmentRepo := repository.NewDepartmentRepository(db)
-	departmentHandler := transportHttp.NewDepartmentHandler(departmentRepo, validate)
+	departmentService := service.NewDepartmentService(departmentRepo)
+	departmentHandler := transportHttp.NewDepartmentHandler(departmentService, validate)
 
 	// Mount the routes under a versioned API prefix
 	r.Route("/api/v1", func(r chi.Router) {
