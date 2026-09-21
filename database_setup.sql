@@ -96,3 +96,47 @@ CREATE TABLE IF NOT EXISTS teacher_assignments (
     -- (Remove this UNIQUE KEY if the school allows co-teaching)
     UNIQUE KEY uq_class_subject (class_id, subject_id)
 );
+
+CREATE TABLE IF NOT EXISTS staff_positions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(100) NOT NULL UNIQUE,
+    department VARCHAR(100) NOT NULL,
+    description TEXT,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS staff (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    position_id INT NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    hire_date DATE NOT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    FOREIGN KEY (position_id) REFERENCES staff_positions(id)
+);
+
+CREATE INDEX idx_staff_position_id ON staff(position_id);
+
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    staff_id INT UNIQUE NULL,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    password_reset_token VARCHAR(255) NULL,
+    password_token_expires DATETIME NULL,
+    role VARCHAR(30) NOT NULL DEFAULT 'STAFF',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    last_login_at TIMESTAMP NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+
+    FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_users_is_active ON users(is_active);
+
+CREATE INDEX idx_users_reset_token ON users(password_reset_token);
