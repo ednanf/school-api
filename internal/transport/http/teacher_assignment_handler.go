@@ -166,5 +166,40 @@ func (h *TeacherAssignmentHandler) HandleList(w http.ResponseWriter, r *http.Req
 }
 
 func (h *TeacherAssignmentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "", "update hit")
+	// Extract and convert the id
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid assignment ID", nil)
+		return
+	}
+
+	var input domain.PatchTeacherAssignmentInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Validate optional field constraints
+	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
+		if validationErrs, ok := err.(validator.ValidationErrors); ok {
+			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
+			return
+		}
+		sendError(w, http.StatusBadRequest, "Validation failed", nil)
+		return
+	}
+
+	// Perform the update
+	updatedAssignment, err := h.repo.Update(r.Context(), id, input)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			sendError(w, http.StatusNotFound, "Assignment not found", nil)
+			return
+		}
+		sendError(w, http.StatusInternalServerError, "Failed to update assignment", nil)
+		return
+	}
+
+	sendSuccess(w, http.StatusOK, "", updatedAssignment)
 }

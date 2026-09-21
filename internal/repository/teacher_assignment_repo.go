@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ednanf/school-api/internal/domain"
@@ -142,6 +143,57 @@ func (r *taRepo) List(ctx context.Context, limit, offset int) ([]domain.Populate
 	return assignments, totalItems, nil
 }
 
-func (r *taRepo) Update(ctx context.Context, id int, input domain.PatchTeacherAssignmentInput) (*domain.TeacherAssignment, error) {
-	return nil, nil
+func (r *taRepo) Update(ctx context.Context, id int, input domain.PatchTeacherAssignmentInput) (*domain.PopulatedTeacherAssignment, error) {
+	// Make a slice and a map to hold clauses and arguments
+	setClauses := make([]string, 0, 4)
+	args := make(map[string]any)
+
+	// Append clause and set argument if a value is present
+	if input.TeacherID != nil {
+		setClauses = append(setClauses, "teacher_id = :teacher_id")
+		args["teacher_id"] = *input.TeacherID
+	}
+	if input.ClassID != nil {
+		setClauses = append(setClauses, "class_id = :class_id")
+		args["class_id"] = *input.ClassID
+	}
+	if input.SubjectID != nil {
+		setClauses = append(setClauses, "subject_id = :subject_id")
+		args["subject_id"] = *input.SubjectID
+	}
+
+	// If there are no changes in the input payload
+	if len(setClauses) == 0 {
+		return r.GetById(ctx, id)
+	}
+
+	// Add timestamp clause + argument
+	setClauses = append(setClauses, "updated_at = :updated_at")
+	args["updated_at"] = time.Now().UTC()
+	args["id"] = id
+
+	// Build query dinamically with the values
+	query := fmt.Sprintf(`
+        UPDATE teacher_assignments
+        SET %s
+        WHERE id = :id
+    `, strings.Join(setClauses, ", "))
+
+	// Execute the operation
+	result, err := r.db.NamedExecContext(ctx, query, args)
+	if err != nil {
+		return nil, fmt.Errorf("taRepo.Update execute: %w", err)
+	}
+
+	// Determine if any row was affected
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("taRepo.Update rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return nil, sql.ErrNoRows
+	}
+
+	// Return the hydrating the nested objects (due to how GetById works)
+	return r.GetById(ctx, id)
 }

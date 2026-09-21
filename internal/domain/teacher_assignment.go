@@ -11,7 +11,7 @@ type TeacherAssignmentRepository interface {
 	Delete(ctx context.Context, id int) error
 	GetById(ctx context.Context, id int) (*PopulatedTeacherAssignment, error)
 	List(ctx context.Context, limit, offset int) ([]PopulatedTeacherAssignment, int, error)
-	Update(ctx context.Context, id int, input PatchTeacherAssignmentInput) (*TeacherAssignment, error)
+	Update(ctx context.Context, id int, input PatchTeacherAssignmentInput) (*PopulatedTeacherAssignment, error)
 }
 
 // TeacherAssignment defines the shape of TeacherAssignment struct in the database
@@ -25,9 +25,9 @@ type TeacherAssignment struct {
 }
 
 type PatchTeacherAssignmentInput struct {
-	TeacherID int `json:"teacher_id" db:"teacher_id" validate:"required,gt=0"`
-	ClassID   int `json:"class_id" db:"class_id" validate:"required,gt=0"`
-	SubjectID int `json:"subject_id" db:"subject_id" validate:"required,gt=0"`
+	TeacherID *int `json:"teacher_id" db:"teacher_id" validate:"omitempty,required,gt=0"`
+	ClassID   *int `json:"class_id" db:"class_id" validate:"omitempty,required,gt=0"`
+	SubjectID *int `json:"subject_id" db:"subject_id" validate:"omitempty,required,gt=0"`
 }
 
 type TeacherSummary struct {
