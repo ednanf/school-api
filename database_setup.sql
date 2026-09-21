@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS staff (
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     FOREIGN KEY (position_id) REFERENCES staff_positions(id)
-);
+) AUTO_INCREMENT=100;
 
 CREATE INDEX idx_staff_position_id ON staff(position_id);
 
@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at DATETIME NOT NULL,
 
     FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE SET NULL
-);
+) AUTO_INCREMENT=100;
 
 CREATE INDEX idx_users_is_active ON users(is_active);
 
