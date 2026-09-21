@@ -97,14 +97,27 @@ CREATE TABLE IF NOT EXISTS teacher_assignments (
     UNIQUE KEY uq_class_subject (class_id, subject_id)
 );
 
-CREATE TABLE IF NOT EXISTS staff_positions (
+CREATE TABLE IF NOT EXISTS departments (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(100) NOT NULL UNIQUE,
-    department VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    code VARCHAR(20) UNIQUE NULL, -- Optional (e.g., 'ADM', 'IT', 'ACAD')
     description TEXT,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS staff_positions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    department_id INT NOT NULL,
+    title VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+);
+
+CREATE INDEX idx_staff_positions_dept_id ON staff_positions(department_id);
 
 CREATE TABLE IF NOT EXISTS staff (
     id INT AUTO_INCREMENT PRIMARY KEY,
