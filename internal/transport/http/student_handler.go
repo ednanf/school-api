@@ -174,7 +174,7 @@ func (h *StudentHandler) HandleBulkUpdateClass(w http.ResponseWriter, r *http.Re
 	// Obtain the number of affected rows
 	rowsAffected, err := h.repo.BulkUpdateClass(r.Context(), input.StudentIDs, input.ClassID)
 	if err != nil {
-		if errors.Is(err, domain.ErrClassNotFound) {
+		if errors.Is(err, domain.ErrNotFound) {
 			sendError(w, http.StatusNotFound, "Target class does not exist", nil)
 			return
 		}

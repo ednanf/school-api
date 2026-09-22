@@ -205,7 +205,7 @@ func (r *studentRepo) BulkUpdateClass(ctx context.Context, ids []int, classID in
 		return 0, fmt.Errorf("studentRepo.BulkUpdateClass check class: %w", err)
 	}
 	if !exists {
-		return 0, domain.ErrClassNotFound
+		return 0, domain.ErrNotFound
 	}
 
 	// Perform bulk update
