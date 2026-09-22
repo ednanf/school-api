@@ -74,14 +74,45 @@ func (r *departmentRepo) GetById(ctx context.Context, id int) (*domain.Departmen
 }
 
 func (r *departmentRepo) List(ctx context.Context, limit int, offset int) ([]domain.Department, int, error) {
-	// departments := make([]domain.Department, 0)
+	departments := make([]domain.Department, 0)
 
-	// var totalItems int
-	// countQuery := "SELECT COUNT(*) FROM departments"
+	var totalItems int
+	countQuery := "SELECT COUNT(*) FROM departments"
+	if err := r.db.GetContext(ctx, &totalItems, countQuery); err != nil {
+		return nil, 0, fmt.Errorf("departmentRepo.List count: %w", err)
+	}
 
-	return nil, 0, nil
+	query := "SELECT id, name, description, created_at, updated_at FROM departments ORDER BY id LIMIT ? OFFSET ?"
+
+	if err := r.db.SelectContext(ctx, &departments, query, limit, offset); err != nil {
+		return nil, 0, fmt.Errorf("departmentRepo.List fetch: %w", err)
+	}
+
+	return departments, totalItems, nil
 }
 
-func (r *departmentRepo) Update(ctx context.Context, id int, input domain.PatchDepartmentInput) (*domain.Department, error) {
-	return nil, nil
+func (r *departmentRepo) Update(ctx context.Context, d *domain.Department) error {
+	query := `
+		UPDATE departments SET
+			name = :name,
+			description = :description,
+			updated_at = :updated_at
+		WHERE id = :id
+	`
+
+	result, err := r.db.NamedExecContext(ctx, query, d)
+	if err != nil {
+		return fmt.Errorf("departmentRepo.Update execute: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("departmentRepo.Update rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
 }

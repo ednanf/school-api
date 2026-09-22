@@ -101,9 +101,70 @@ func (h *DepartmentHandler) HandleGetById(w http.ResponseWriter, r *http.Request
 }
 
 func (h *DepartmentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "list hit", nil)
+	queryParams := r.URL.Query()
+
+	reqPage, _ := strconv.Atoi(queryParams.Get("page"))
+	reqLimit, _ := strconv.Atoi(queryParams.Get("limit"))
+
+	// Service returns the actual normalized page and limit used
+	departments, totalItems, page, limit, err := h.service.List(r.Context(), reqPage, reqLimit)
+	if err != nil {
+		sendError(w, http.StatusInternalServerError, "Failed to fetch departments", nil)
+		return
+	}
+
+	totalPages := 0
+	if totalItems > 0 {
+		totalPages = (totalItems + limit - 1) / limit
+	}
+
+	meta := PaginatedMeta{
+		Page:       page,
+		Limit:      limit,
+		Count:      len(departments),
+		TotalItems: totalItems,
+		TotalPages: totalPages,
+	}
+
+	sendPaginated(w, http.StatusOK, departments, meta)
 }
 
 func (h *DepartmentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "update hit", nil)
+	// Extract and convert the id
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid department ID", nil)
+		return
+	}
+
+	// Decode the request
+	var input domain.PatchDepartmentInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Validate the payload
+	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
+		if validationErrs, ok := err.(validator.ValidationErrors); ok {
+			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
+			return
+		}
+		sendError(w, http.StatusBadRequest, "Validation failed", nil)
+		return
+	}
+
+	// Execute the service
+	updatedDept, err := h.service.Update(r.Context(), id, input)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			sendError(w, http.StatusNotFound, "Department not found", nil)
+			return
+		}
+		sendError(w, http.StatusInternalServerError, "Failed to update department", nil)
+		return
+	}
+
+	sendSuccess(w, http.StatusOK, "Department updated successfully", updatedDept)
 }

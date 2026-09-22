@@ -54,3 +54,54 @@ func (s *departmentService) GetById(ctx context.Context, id int) (*domain.Depart
 
 	return dept, nil
 }
+
+func (s *departmentService) List(ctx context.Context, page, limit int) ([]domain.Department, int, int, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 30
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	offset := (page - 1) * limit
+
+	departments, totalItems, err := s.repo.List(ctx, limit, offset)
+	if err != nil {
+		return nil, 0, 0, 0, fmt.Errorf("departmentService.List: %w", err)
+	}
+
+	return departments, totalItems, page, limit, nil
+}
+
+func (s *departmentService) Update(ctx context.Context, id int, input domain.PatchDepartmentInput) (*domain.Department, error) {
+	// Fetch current record
+	department, err := s.repo.GetById(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("departmentService.Update fetch: %w", err)
+	}
+
+	// Overwrite raw fields if provided in payload
+	if input.Name != nil {
+		department.Name = *input.Name
+	}
+
+	if input.Description != nil {
+		department.Description = *input.Description
+	}
+
+	// Normalize data
+	department.Normalize(s.caser)
+
+	// Update timestamp
+	department.UpdatedAt = time.Now().UTC()
+
+	// Save changes back to DB
+	if err := s.repo.Update(ctx, department); err != nil {
+		return nil, fmt.Errorf("departmentService.Update execute: %w", err)
+	}
+
+	return department, nil
+}
