@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS classes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     grade TINYINT NOT NULL CHECK (grade BETWEEN 1 AND 9),
     letter CHAR(1) NOT NULL CHECK (letter IN ('A', 'B', 'C', 'D')),
+    isActive BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     UNIQUE KEY uq_class_grade_letter (grade, letter)
@@ -17,6 +18,7 @@ CREATE TABLE IF NOT EXISTS classes (
 CREATE TABLE IF NOT EXISTS subjects (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
+    isActive BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL
 ) AUTO_INCREMENT=1;
@@ -63,6 +65,7 @@ CREATE TABLE IF NOT EXISTS students (
     last_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     class_id INT NOT NULL,
+    isActive BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     CONSTRAINT fk_students_class FOREIGN KEY (class_id) REFERENCES classes(id)
@@ -74,6 +77,7 @@ CREATE TABLE IF NOT EXISTS teachers (
     first_name VARCHAR(255) NOT NULL,
     last_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
+    isActive BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL
 ) AUTO_INCREMENT=100;
@@ -101,6 +105,7 @@ CREATE TABLE IF NOT EXISTS departments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
+    isActive BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL
 );
@@ -110,6 +115,7 @@ CREATE TABLE IF NOT EXISTS staff_positions (
     department_id INT NOT NULL,
     title VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
+    isActive BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
 
@@ -125,6 +131,7 @@ CREATE TABLE IF NOT EXISTS staff (
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     hire_date DATE NOT NULL,
+    isActive BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     FOREIGN KEY (position_id) REFERENCES staff_positions(id)
