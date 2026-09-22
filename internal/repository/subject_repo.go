@@ -5,13 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
-	"time"
 
 	"github.com/ednanf/school-api/internal/domain"
 	"github.com/jmoiron/sqlx"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 // subjectRepo stores the db connection and has the repository methods attached to it
@@ -29,17 +25,6 @@ func (r *subjectRepo) Create(ctx context.Context, s *domain.Subject) error {
 		INSERT INTO subjects (name, created_at, updated_at)
 		VALUES(:name, :created_at, :updated_at)
 	`
-
-	// Initiate a caser to normalize capitalization
-	caser := cases.Title(language.English)
-
-	// Normalize fields explicitly (Trim + Case handling)
-	s.Name = caser.String(strings.TrimSpace(s.Name))
-
-	// Add timestamp and normalize values
-	now := time.Now().UTC()
-	s.CreatedAt = now
-	s.UpdatedAt = now
 
 	// Execute the db operation with `NamedExecContext` to match the named placeholders
 	result, err := r.db.NamedExecContext(ctx, query, s)
@@ -75,7 +60,7 @@ func (r *subjectRepo) Delete(ctx context.Context, id int) error {
 	}
 
 	if rowsAffected == 0 {
-		return sql.ErrNoRows
+		return domain.ErrNotFound
 	}
 
 	return nil
@@ -90,7 +75,7 @@ func (r *subjectRepo) GetById(ctx context.Context, id int) (*domain.Subject, err
 	if err := r.db.GetContext(ctx, &s, query, id); err != nil {
 		// If the id is not found
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+			return nil, domain.ErrNotFound
 		}
 
 		// Other errors
@@ -116,8 +101,7 @@ func (r *subjectRepo) List(ctx context.Context, limit int, offset int) ([]domain
 	query := "SELECT * FROM subjects ORDER BY id LIMIT ? OFFSET ?"
 
 	// Execute the db operation
-	err := r.db.SelectContext(ctx, &subjects, query, limit, offset)
-	if err != nil {
+	if err := r.db.SelectContext(ctx, &subjects, query, limit, offset); err != nil {
 		return nil, 0, fmt.Errorf("subjectRepo.List fetch: %w", err)
 	}
 
@@ -125,23 +109,7 @@ func (r *subjectRepo) List(ctx context.Context, limit int, offset int) ([]domain
 	return subjects, totalItems, nil
 }
 
-func (r *subjectRepo) Update(ctx context.Context, id int, input domain.PatchSubjectInput) (*domain.Subject, error) {
-	// Fetch the current record from the db
-	subject, err := r.GetById(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("subjectRepo.Update fetch: %w", err)
-	}
-
-	caser := cases.Title(language.English)
-
-	// Overwrite only fields provided in the PATCH payload
-	if input.Name != nil {
-		subject.Name = caser.String(strings.TrimSpace(*input.Name))
-	}
-
-	// Apply timestamp
-	subject.UpdatedAt = time.Now().UTC()
-
+func (r *subjectRepo) Update(ctx context.Context, s *domain.Subject) error {
 	query := `
 		UPDATE subjects SET
 			name = :name,
@@ -149,10 +117,19 @@ func (r *subjectRepo) Update(ctx context.Context, id int, input domain.PatchSubj
 		WHERE id = :id
 	`
 
-	_, err = r.db.NamedExecContext(ctx, query, subject)
+	result, err := r.db.NamedExecContext(ctx, query, s)
 	if err != nil {
-		return nil, fmt.Errorf("subjectRepo.Update execute: %w", err)
+		return fmt.Errorf("subjectRepo.Update exec: %w", err)
 	}
 
-	return subject, nil
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("subjectRepo.Update rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
 }

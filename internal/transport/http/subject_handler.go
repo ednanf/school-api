@@ -14,13 +14,13 @@ import (
 
 // SubjectHandler contains `repo` with a way to communicate with the database and the pointer to the validator instantiated once in `main.go`
 type SubjectHandler struct {
-	repo     domain.SubjectRepository
+	service  domain.SubjectService
 	validate *validator.Validate
 }
 
 // NewSubjectHandler isa constructor that returns a pointer to a SubjectHandler struct, initializing it with the injected repository and validator dependencies
-func NewSubjectHandler(repo domain.SubjectRepository, validate *validator.Validate) *SubjectHandler {
-	return &SubjectHandler{repo: repo, validate: validate}
+func NewSubjectHandler(service domain.SubjectService, validate *validator.Validate) *SubjectHandler {
+	return &SubjectHandler{service: service, validate: validate}
 }
 
 // Route paths
@@ -56,7 +56,7 @@ func (h *SubjectHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Save to the db via the repository
-	if err := h.repo.Create(r.Context(), &subject); err != nil {
+	if err := h.service.Create(r.Context(), &subject); err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to create subject entry", nil)
 		return
 	}
@@ -74,7 +74,7 @@ func (h *SubjectHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Execute the db operation
-	if err := h.repo.Delete(r.Context(), id); err != nil {
+	if err := h.service.Delete(r.Context(), id); err != nil {
 		// 404 when subject is not found
 		if errors.Is(err, sql.ErrNoRows) {
 			sendError(w, http.StatusNotFound, "Subject not found", nil)
@@ -99,7 +99,7 @@ func (h *SubjectHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Search for subject
-	subject, err := h.repo.GetById(r.Context(), id)
+	subject, err := h.service.GetById(r.Context(), id)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Database error", nil)
 		return
@@ -115,40 +115,19 @@ func (h *SubjectHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *SubjectHandler) HandleList(w http.ResponseWriter, r *http.Request) {
-	// Parse query params correctly from r.URL.Query()
 	queryParams := r.URL.Query()
-	limitStr := queryParams.Get("limit")
-	pageStr := queryParams.Get("page")
 
-	// Defaults
-	limit := 30
-	page := 1
+	// Error is not needed as default values are in place
+	reqPage, _ := strconv.Atoi(queryParams.Get("page"))
+	reqLimit, _ := strconv.Atoi(queryParams.Get("limit"))
 
-	// Convert string query params to integers
-	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
-		limit = l
-	}
-
-	if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
-		page = p
-	}
-
-	// Limit cpa to prevent abuse
-	if limit > 100 {
-		limit = 100
-	}
-
-	// Calculate the database offset derived from page number
-	offset := (page - 1) * limit
-
-	// Call the repository with context and parsed pagination
-	subjects, totalItems, err := h.repo.List(r.Context(), limit, offset)
+	// Service returns the actual normalized page and limit used
+	subjects, totalItems, page, limit, err := h.service.List(r.Context(), reqPage, reqLimit)
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "Failed to fetch students", nil)
+		sendError(w, http.StatusInternalServerError, "Failed to fetch subjects", nil)
 		return
 	}
 
-	// Calculate total pages safely
 	totalPages := 0
 	if totalItems > 0 {
 		totalPages = (totalItems + limit - 1) / limit
@@ -192,9 +171,9 @@ func (h *SubjectHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Perform the update in the db
-	updatedSubject, err := h.repo.Update(r.Context(), id, input)
+	updatedSubject, err := h.service.Update(r.Context(), id, input)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, domain.ErrNotFound) {
 			sendError(w, http.StatusNotFound, "Subject not found", nil)
 			return
 		}
@@ -202,5 +181,5 @@ func (h *SubjectHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendSuccess(w, http.StatusOK, "", updatedSubject)
+	sendSuccess(w, http.StatusOK, "Subject updated successfully", updatedSubject)
 }
