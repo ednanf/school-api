@@ -20,7 +20,7 @@ type DepartmentService interface {
 	Create(ctx context.Context, d *Department) error
 	Delete(ctx context.Context, id int) error
 	GetById(ctx context.Context, id int) (*Department, error)
-	List(ctx context.Context, page, limit int) ([]Department, int, int, int, error)
+	List(ctx context.Context, page, limit int) (items []Department, totalItems, pageNum, limitNum int, err error)
 	Update(ctx context.Context, id int, input PatchDepartmentInput) (*Department, error)
 }
 

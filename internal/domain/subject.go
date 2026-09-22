@@ -21,7 +21,7 @@ type SubjectService interface {
 	Create(ctx context.Context, sub *Subject) error
 	Delete(ctx context.Context, id int) error
 	GetById(ctx context.Context, id int) (*Subject, error)
-	List(ctx context.Context, page, limit int) ([]Subject, int, int, int, error)
+	List(ctx context.Context, page, limit int) (items []Subject, totalItems, pageNum, limitNum int, err error)
 	Update(ctx context.Context, id int, input PatchSubjectInput) (*Subject, error)
 }
 
