@@ -57,7 +57,7 @@ func (s *subjectService) GetById(ctx context.Context, id int) (*domain.Subject, 
 	return subject, nil
 }
 
-func (s *subjectService) List(ctx context.Context, page, limit int) ([]domain.Subject, int, int, int, error) {
+func (s *subjectService) List(ctx context.Context, page, limit int) (items []domain.Subject, totalItems, pageNum, limitNum int, err error) {
 	if page < 1 {
 		page = 1
 	}

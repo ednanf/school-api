@@ -55,7 +55,7 @@ func (s *departmentService) GetById(ctx context.Context, id int) (*domain.Depart
 	return dept, nil
 }
 
-func (s *departmentService) List(ctx context.Context, page, limit int) ([]domain.Department, int, int, int, error) {
+func (s *departmentService) List(ctx context.Context, page, limit int) (items []domain.Department, totalItems, pageNum, limitNum int, err error) {
 	if page < 1 {
 		page = 1
 	}
