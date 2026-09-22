@@ -69,7 +69,7 @@ func (r *subjectRepo) Delete(ctx context.Context, id int) error {
 func (r *subjectRepo) GetById(ctx context.Context, id int) (*domain.Subject, error) {
 	var s domain.Subject
 
-	query := "SELECT * FROM subjects WHERE id = ?"
+	query := "SELECT id, name, is_active, created_at, updated_at FROM subjects WHERE id = ?"
 
 	// Execute the db operation and assign it to the variable `s` if successful
 	if err := r.db.GetContext(ctx, &s, query, id); err != nil {
@@ -98,7 +98,7 @@ func (r *subjectRepo) List(ctx context.Context, limit int, offset int) ([]domain
 	}
 
 	// Get all columns from table subjects, ordered by their ID, limited to a certain number
-	query := "SELECT * FROM subjects ORDER BY id LIMIT ? OFFSET ?"
+	query := "SELECT id, name, is_active, created_at, updated_at FROM subjects ORDER BY id LIMIT ? OFFSET ?"
 
 	// Execute the db operation
 	if err := r.db.SelectContext(ctx, &subjects, query, limit, offset); err != nil {
