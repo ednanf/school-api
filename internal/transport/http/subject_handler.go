@@ -82,7 +82,7 @@ func (h *SubjectHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 500 for db connection or syntax errors
-		sendError(w, http.StatusInternalServerError, "Failed to delete student", nil)
+		sendError(w, http.StatusInternalServerError, "Failed to delete subject", nil)
 		return
 	}
 
