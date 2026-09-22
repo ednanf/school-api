@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/ednanf/school-api/internal/domain"
@@ -51,17 +52,33 @@ func (r *departmentRepo) Delete(ctx context.Context, id int) error {
 	}
 
 	if rowsAffected == 0 {
-		return sql.ErrNoRows
+		return domain.ErrNotFound
 	}
 
 	return nil
 }
 
 func (r *departmentRepo) GetById(ctx context.Context, id int) (*domain.Department, error) {
-	return nil, nil
+	var d domain.Department
+
+	query := "SELECT id, name, description, created_at, updated_at FROM departments WHERE id = ?"
+
+	if err := r.db.GetContext(ctx, &d, query, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrNotFound
+		}
+		return nil, fmt.Errorf("departmentRepo.GetById execute: %w", err)
+	}
+
+	return &d, nil
 }
 
 func (r *departmentRepo) List(ctx context.Context, limit int, offset int) ([]domain.Department, int, error) {
+	// departments := make([]domain.Department, 0)
+
+	// var totalItems int
+	// countQuery := "SELECT COUNT(*) FROM departments"
+
 	return nil, 0, nil
 }
 

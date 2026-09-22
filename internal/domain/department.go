@@ -19,6 +19,7 @@ type DepartmentRepository interface {
 type DepartmentService interface {
 	Create(ctx context.Context, d *Department) error
 	Delete(ctx context.Context, id int) error
+	GetById(ctx context.Context, id int) (*Department, error)
 }
 
 // Department defines the shape of Department struct in the database

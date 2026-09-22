@@ -1,7 +1,6 @@
 package http
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -51,7 +50,6 @@ func (h *DepartmentHandler) HandleCreate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Calls service now, which runs Normalize() + Timestamps -> then calls Repo.Create()
 	if err := h.service.Create(r.Context(), &department); err != nil {
 		fmt.Println(err)
 		sendError(w, http.StatusInternalServerError, "Failed to create department entry", nil)
@@ -62,7 +60,6 @@ func (h *DepartmentHandler) HandleCreate(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *DepartmentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
-	// Extract and convert URL param
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -70,9 +67,8 @@ func (h *DepartmentHandler) HandleDelete(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Execute service
 	if err := h.service.Delete(r.Context(), id); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, domain.ErrNotFound) {
 			sendError(w, http.StatusNotFound, "Department not found", nil)
 			return
 		}
@@ -84,7 +80,24 @@ func (h *DepartmentHandler) HandleDelete(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *DepartmentHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "get by id hit", nil)
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid department id", nil)
+		return
+	}
+
+	dept, err := h.service.GetById(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			sendError(w, http.StatusNotFound, "Department not found", nil)
+			return
+		}
+		sendError(w, http.StatusInternalServerError, "Failed to retrieve department", nil)
+		return
+	}
+
+	sendSuccess(w, http.StatusOK, "Department retrieved successfully", dept)
 }
 
 func (h *DepartmentHandler) HandleList(w http.ResponseWriter, r *http.Request) {

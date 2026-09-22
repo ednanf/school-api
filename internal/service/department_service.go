@@ -45,3 +45,12 @@ func (s *departmentService) Delete(ctx context.Context, id int) error {
 	}
 	return nil
 }
+
+func (s *departmentService) GetById(ctx context.Context, id int) (*domain.Department, error) {
+	dept, err := s.repo.GetById(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("departmentService.GetById: %w", err)
+	}
+
+	return dept, nil
+}
