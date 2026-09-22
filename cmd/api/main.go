@@ -67,7 +67,8 @@ func main() {
 	studentHandler := transportHttp.NewStudentHandler(studentRepo, validate)
 
 	classRepo := repository.NewClassRepository(db)
-	classHandler := transportHttp.NewClassHandler(classRepo, validate)
+	classService := service.NewClassService(classRepo)
+	classHandler := transportHttp.NewClassHandler(classService, validate)
 
 	subjectRepo := repository.NewSubjectRepository(db)
 	subjectService := service.NewSubjectService(subjectRepo)

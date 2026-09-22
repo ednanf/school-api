@@ -14,13 +14,13 @@ import (
 
 // ClassHandler contains `repo` with a way to communicate with the database and the pointer to the validator instantiated once in `main.go`
 type ClassHandler struct {
-	repo     domain.ClassRepository
+	service  domain.ClassService
 	validate *validator.Validate
 }
 
 // NewClassHandler is a constructor that returns a pointer to a ClassHandler struct, initializing it with the injected repository and validator dependencies
-func NewClassHandler(repo domain.ClassRepository, validate *validator.Validate) *ClassHandler {
-	return &ClassHandler{repo: repo, validate: validate}
+func NewClassHandler(service domain.ClassService, validate *validator.Validate) *ClassHandler {
+	return &ClassHandler{service: service, validate: validate}
 }
 
 // Route paths
@@ -58,7 +58,7 @@ func (h *ClassHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Save to the db via the repository
-	if err := h.repo.Create(r.Context(), &class); err != nil {
+	if err := h.service.Create(r.Context(), &class); err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to create class entry", nil)
 		return
 	}
@@ -77,9 +77,9 @@ func (h *ClassHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Execute the db operation
-	if err := h.repo.Delete(r.Context(), id); err != nil {
+	if err := h.service.Delete(r.Context(), id); err != nil {
 		// 404 when class was not found
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, domain.ErrNotFound) {
 			sendError(w, http.StatusNotFound, "Class not found", nil)
 			return
 		}
@@ -102,7 +102,7 @@ func (h *ClassHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Search for class
-	class, err := h.repo.GetById(r.Context(), id)
+	class, err := h.service.GetById(r.Context(), id)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Database error", nil)
 		return
@@ -118,34 +118,13 @@ func (h *ClassHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ClassHandler) HandleList(w http.ResponseWriter, r *http.Request) {
-	// Parse query parameters correctly from r.URL.Query()
 	queryParams := r.URL.Query()
-	limitStr := queryParams.Get("limit")
-	pageStr := queryParams.Get("page")
 
-	// Defaults
-	limit := 20
-	page := 1
+	reqPage, _ := strconv.Atoi(queryParams.Get("page"))
+	reqLimit, _ := strconv.Atoi(queryParams.Get("limit"))
 
-	// Convert string query params to integers
-	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
-		limit = l
-	}
-
-	if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
-		page = p
-	}
-
-	// Limit cap to prevent abuse
-	if limit > 100 {
-		limit = 100
-	}
-
-	// Calculate the database offset derived from page number
-	offset := (page - 1) * limit
-
-	// Call the repository with context and parsed pagination
-	classes, totalItems, err := h.repo.List(r.Context(), limit, offset)
+	// Service returns the actual normalized page and limit used
+	classes, totalItems, page, limit, err := h.service.List(r.Context(), reqPage, reqLimit)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to fetch students", nil)
 		return
@@ -169,45 +148,23 @@ func (h *ClassHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ClassHandler) HandleListStudentsByClassId(w http.ResponseWriter, r *http.Request) {
-	// Parse query parameters from r.URL.Query()
-	queryParams := r.URL.Query()
 	idStr := chi.URLParam(r, "id")
-	limitStr := queryParams.Get("limit")
-	pageStr := queryParams.Get("page")
-
-	// Defaults
-	var classId int
-	limit := 100
-	page := 1
-
-	// Convert string query params to int
-	if parsedId, err := strconv.Atoi(idStr); err == nil && parsedId > 0 {
-		classId = parsedId
+	classID, err := strconv.Atoi(idStr)
+	if err != nil || classID <= 0 {
+		sendError(w, http.StatusBadRequest, "Invalid class ID", nil)
+		return
 	}
 
-	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
-		limit = l
-	}
+	queryParams := r.URL.Query()
+	reqPage, _ := strconv.Atoi(queryParams.Get("page"))
+	reqLimit, _ := strconv.Atoi(queryParams.Get("limit"))
 
-	if limit > 200 {
-		limit = 200
-	}
-
-	if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
-		page = p
-	}
-
-	// Calculate the database offset derived from page number
-	offset := (page - 1) * limit
-
-	// Call the repository with context and parsed pagination
-	students, totalItems, err := h.repo.ListStudentsByClassId(r.Context(), classId, limit, offset)
+	students, totalItems, page, limit, err := h.service.ListStudentsByClassId(r.Context(), classID, reqPage, reqLimit)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to fetch students", nil)
 		return
 	}
 
-	// Calculate total pages
 	totalPages := 0
 	if totalItems > 0 {
 		totalPages = (totalItems + limit - 1) / limit
@@ -221,7 +178,6 @@ func (h *ClassHandler) HandleListStudentsByClassId(w http.ResponseWriter, r *htt
 		TotalPages: totalPages,
 	}
 
-	// Returns a [] instead of null if empty because the repository initializes an empty slice
 	sendPaginated(w, http.StatusOK, students, meta)
 }
 
@@ -252,7 +208,7 @@ func (h *ClassHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Perform the update in the db
-	updatedClass, err := h.repo.Update(r.Context(), id, input)
+	updatedClass, err := h.service.Update(r.Context(), id, input)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			sendError(w, http.StatusNotFound, "Class not found", nil)
