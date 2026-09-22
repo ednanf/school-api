@@ -38,3 +38,10 @@ func (s *departmentService) Create(ctx context.Context, d *domain.Department) er
 
 	return nil
 }
+
+func (s *departmentService) Delete(ctx context.Context, id int) error {
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return fmt.Errorf("departmentService.Delete: %w", err)
+	}
+	return nil
+}

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/ednanf/school-api/internal/domain"
@@ -37,6 +38,22 @@ func (r *departmentRepo) Create(ctx context.Context, d *domain.Department) error
 }
 
 func (r *departmentRepo) Delete(ctx context.Context, id int) error {
+	query := "DELETE FROM departments WHERE id = ?"
+
+	result, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("departmentRepo.Delete execute: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("departmentRepo.Delete rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
 	return nil
 }
 

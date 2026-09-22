@@ -1,9 +1,12 @@
 package http
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/ednanf/school-api/internal/domain"
 	"github.com/go-chi/chi/v5"
@@ -59,7 +62,25 @@ func (h *DepartmentHandler) HandleCreate(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *DepartmentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "delete hit", nil)
+	// Extract and convert URL param
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid department ID", nil)
+		return
+	}
+
+	// Execute service
+	if err := h.service.Delete(r.Context(), id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			sendError(w, http.StatusNotFound, "Department not found", nil)
+			return
+		}
+		sendError(w, http.StatusInternalServerError, "Failed to delete department", nil)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *DepartmentHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
