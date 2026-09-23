@@ -12,15 +12,14 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// TeacherAssignmentHandler contains `repo` with a way to communicate with the database and the pointer to the validator instantiated once in `main.go`
 type TeacherAssignmentHandler struct {
-	repo     domain.TeacherAssignmentRepository
+	service  domain.TeacherAssignmentService
 	validate *validator.Validate
 }
 
-// NewTeacherAssignmentHandler is a constructor that returns a pointer to a TeacherAssignmentHandler struct, initializing it with the injected repository and validator dependencies
-func NewTeacherAssignmentHandler(repo domain.TeacherAssignmentRepository, validate *validator.Validate) *TeacherAssignmentHandler {
-	return &TeacherAssignmentHandler{repo: repo, validate: validate}
+// NewTeacherAssignmentHandler is a constructor that returns a pointer to a TeacherAssignmentHandler struct, initializing it with the injected service and validator dependencies
+func NewTeacherAssignmentHandler(service domain.TeacherAssignmentService, validate *validator.Validate) *TeacherAssignmentHandler {
+	return &TeacherAssignmentHandler{service: service, validate: validate}
 }
 
 // Route paths
@@ -57,7 +56,7 @@ func (h *TeacherAssignmentHandler) HandleCreate(w http.ResponseWriter, r *http.R
 	}
 
 	// Save to the db via the repository
-	if err := h.repo.Create(r.Context(), &assignment); err != nil {
+	if err := h.service.Create(r.Context(), &assignment); err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to create assignment entry", nil)
 		return
 	}
@@ -76,7 +75,7 @@ func (h *TeacherAssignmentHandler) HandleDelete(w http.ResponseWriter, r *http.R
 	}
 
 	// Execute the db operation
-	if err = h.repo.Delete(r.Context(), id); err != nil {
+	if err = h.service.Delete(r.Context(), id); err != nil {
 		// 404 when not found
 		if errors.Is(err, sql.ErrNoRows) {
 			sendError(w, http.StatusNotFound, "Assignment not found", nil)
@@ -100,7 +99,7 @@ func (h *TeacherAssignmentHandler) HandleGetById(w http.ResponseWriter, r *http.
 	}
 
 	// Search for the assignment (returns domain.PopulatedTeacherAssignment)
-	t, err := h.repo.GetById(r.Context(), id)
+	t, err := h.service.GetById(r.Context(), id)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Database error", nil)
 		return
@@ -117,32 +116,11 @@ func (h *TeacherAssignmentHandler) HandleGetById(w http.ResponseWriter, r *http.
 func (h *TeacherAssignmentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	// Parse URL params
 	queryParams := r.URL.Query()
-	limitStr := queryParams.Get("limit")
-	pageStr := queryParams.Get("page")
-
-	// Defaults
-	limit := 10
-	page := 1
-
-	// Convert string query params to int
-	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
-		limit = l
-	}
-
-	// Limit to prevent abuse
-	if limit > 100 {
-		limit = 100
-	}
-
-	if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
-		page = p
-	}
-
-	// Calculate the db offset
-	offset := (page - 1) * limit
+	reqPage, _ := strconv.Atoi(queryParams.Get("page"))
+	reqLimit, _ := strconv.Atoi(queryParams.Get("limit"))
 
 	// Execute the operation (returns []domain.PopulatedTeacherAssignment)
-	assignments, totalItems, err := h.repo.List(r.Context(), limit, offset)
+	assignments, totalItems, page, limit, err := h.service.List(r.Context(), reqPage, reqLimit)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to fetch assignments", nil)
 		return
@@ -191,7 +169,7 @@ func (h *TeacherAssignmentHandler) HandleUpdate(w http.ResponseWriter, r *http.R
 	}
 
 	// Perform the update
-	updatedAssignment, err := h.repo.Update(r.Context(), id, input)
+	updatedAssignment, err := h.service.Update(r.Context(), id, input)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			sendError(w, http.StatusNotFound, "Assignment not found", nil)

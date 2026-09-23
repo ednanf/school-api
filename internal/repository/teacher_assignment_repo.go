@@ -28,11 +28,6 @@ func (r *taRepo) Create(ctx context.Context, t *domain.TeacherAssignment) error 
 		VALUES (:teacher_id, :class_id, :subject_id, :created_at, :updated_at)
 	`
 
-	// Add timestamp
-	now := time.Now().UTC()
-	t.CreatedAt = now
-	t.UpdatedAt = now
-
 	result, err := r.db.NamedExecContext(ctx, query, t)
 	if err != nil {
 		return fmt.Errorf("taRepo.Create execute: %w", err)
@@ -67,7 +62,7 @@ func (r *taRepo) Delete(ctx context.Context, id int) error {
 
 	// If 0 rows were affected, the ID did not exist in the db
 	if rowsAffected == 0 {
-		return sql.ErrNoRows
+		return domain.ErrNotFound
 	}
 
 	return nil
@@ -191,7 +186,7 @@ func (r *taRepo) Update(ctx context.Context, id int, input domain.PatchTeacherAs
 		return nil, fmt.Errorf("taRepo.Update rows affected: %w", err)
 	}
 	if rowsAffected == 0 {
-		return nil, sql.ErrNoRows
+		return nil, domain.ErrNotFound
 	}
 
 	// Return the hydrating the nested objects (due to how GetById works)

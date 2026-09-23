@@ -14,6 +14,14 @@ type TeacherAssignmentRepository interface {
 	Update(ctx context.Context, id int, input PatchTeacherAssignmentInput) (*PopulatedTeacherAssignment, error)
 }
 
+type TeacherAssignmentService interface {
+	Create(ctx context.Context, t *TeacherAssignment) error
+	Delete(ctx context.Context, id int) error
+	GetById(ctx context.Context, id int) (*PopulatedTeacherAssignment, error)
+	List(ctx context.Context, page, limit int) (items []PopulatedTeacherAssignment, totalItems, pageNum, limitNum int, err error)
+	Update(ctx context.Context, id int, input PatchTeacherAssignmentInput) (*PopulatedTeacherAssignment, error)
+}
+
 // TeacherAssignment defines the shape of TeacherAssignment struct in the database
 type TeacherAssignment struct {
 	ID        int       `json:"id" db:"id"`
