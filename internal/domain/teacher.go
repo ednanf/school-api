@@ -14,6 +14,14 @@ type TeacherRepository interface {
 	Delete(ctx context.Context, id int) error
 	GetById(ctx context.Context, id int) (*Teacher, error)
 	List(ctx context.Context, limit int, offset int) ([]Teacher, int, error)
+	Update(ctx context.Context, t *Teacher) error
+}
+
+type TeacherService interface {
+	Create(ctx context.Context, t *Teacher) error
+	Delete(ctx context.Context, id int) error
+	GetById(ctx context.Context, id int) (*Teacher, error)
+	List(ctx context.Context, page, limit int) (items []Teacher, totalItems, pageNum, limitNum int, err error)
 	Update(ctx context.Context, id int, input PatchTeacherInput) (*Teacher, error)
 }
 
@@ -23,6 +31,7 @@ type Teacher struct {
 	FirstName string    `json:"first_name" db:"first_name" validate:"required,min=2,max=50"`
 	LastName  string    `json:"last_name" db:"last_name" validate:"required,min=2,max=50"`
 	Email     string    `json:"email" db:"email" validate:"required,email"`
+	IsActive  bool      `json:"is_active" db:"is_active" validate:"required"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
@@ -33,7 +42,7 @@ type PatchTeacherInput struct {
 	FirstName *string `json:"first_name" validate:"omitempty,min=2,max=100"`
 	LastName  *string `json:"last_name" validate:"omitempty,min=2,max=100"`
 	Email     *string `json:"email" validate:"omitempty,email"`
-	ClassID   *int    `json:"class_id" validate:"omitempty,gt=0"`
+	IsActive  *bool   `json:"is_active" db:"is_active" validate:"omitempty"`
 }
 
 // Normalize applies string normalization to user input fields

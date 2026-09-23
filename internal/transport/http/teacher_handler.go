@@ -1,10 +1,9 @@
 package http
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -15,13 +14,13 @@ import (
 
 // TeacherHandler contains `repo` with a way to communicate with the database and the pointer to the validator instantiated in `main.go`
 type TeacherHandler struct {
-	repo     domain.TeacherRepository
+	service  domain.TeacherService
 	validate *validator.Validate
 }
 
 // NewTeacherHandler is a constructor that returns a pointer to a TeacherHandler struct, initializing it with the injected repository and validator dependencies
-func NewTeacherHandler(repo domain.TeacherRepository, validate *validator.Validate) *TeacherHandler {
-	return &TeacherHandler{repo: repo, validate: validate}
+func NewTeacherHandler(service domain.TeacherService, validate *validator.Validate) *TeacherHandler {
+	return &TeacherHandler{service: service, validate: validate}
 }
 
 // Route paths
@@ -58,7 +57,7 @@ func (h *TeacherHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Save to the db via the repository
-	if err := h.repo.Create(r.Context(), &teacher); err != nil {
+	if err := h.service.Create(r.Context(), &teacher); err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to create teacher entry", nil)
 		return
 	}
@@ -76,9 +75,9 @@ func (h *TeacherHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Execute the db operation
-	if err := h.repo.Delete(r.Context(), id); err != nil {
+	if err := h.service.Delete(r.Context(), id); err != nil {
 		// 404 when teacher was not found
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, domain.ErrNotFound) {
 			sendError(w, http.StatusNotFound, "Student not found", nil)
 			return
 		}
@@ -102,7 +101,7 @@ func (h *TeacherHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Search for the teacher
-	teacher, err := h.repo.GetById(r.Context(), id)
+	teacher, err := h.service.GetById(r.Context(), id)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Database error", nil)
 		return
@@ -120,34 +119,12 @@ func (h *TeacherHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
 func (h *TeacherHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	// Parse query params
 	queryParams := r.URL.Query()
-	limitStr := queryParams.Get("limit")
-	pageStr := queryParams.Get("page")
-
-	// Defaults
-	limit := 10
-	page := 1
-
-	// Convert string params to integers
-	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
-		limit = l
-	}
-
-	// Limit cap
-	if limit > 100 {
-		limit = 100
-	}
-
-	if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
-		page = p
-	}
-
-	// Calculate the db offset
-	offset := (page - 1) * limit
+	reqPage, _ := strconv.Atoi(queryParams.Get("page"))
+	reqLimit, _ := strconv.Atoi(queryParams.Get("limit"))
 
 	// Execute db operation
-	teachers, totalItems, err := h.repo.List(r.Context(), limit, offset)
+	teachers, totalItems, page, limit, err := h.service.List(r.Context(), reqPage, reqLimit)
 	if err != nil {
-		fmt.Printf("[DEBUG] ERROR: %v", err)
 		sendError(w, http.StatusInternalServerError, "Failed to fetch teachers", nil)
 		return
 	}
@@ -196,12 +173,13 @@ func (h *TeacherHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Perform the update
-	updatedTeacher, err := h.repo.Update(r.Context(), id, input)
+	updatedTeacher, err := h.service.Update(r.Context(), id, input)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, domain.ErrNotFound) {
 			sendError(w, http.StatusNotFound, "Teacher not found", nil)
 			return
 		}
+		log.Printf("[ERROR] %v\n", err)
 		sendError(w, http.StatusInternalServerError, "Failed to update teacher", nil)
 		return
 	}

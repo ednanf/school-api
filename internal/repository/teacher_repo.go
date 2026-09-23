@@ -5,12 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/ednanf/school-api/internal/domain"
 	"github.com/jmoiron/sqlx"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 // teacherRepo stores the db connection and the repository methods attached to it
@@ -23,22 +20,13 @@ func NewTeacherRepository(db *sqlx.DB) domain.TeacherRepository {
 	return &teacherRepo{db: db}
 }
 
+// TODO: refactor to service layer
+
 func (r *teacherRepo) Create(ctx context.Context, t *domain.Teacher) error {
 	query := `
 		INSERT INTO teachers (first_name, last_name, email, created_at, updated_at)
 		VALUES (:first_name, :last_name, :email, :created_at, :updated_at)
 	`
-
-	// Initialize caser to normalize capitalization
-	caser := cases.Title(language.English)
-
-	// Normalize fields explicitly (Trim + Case handling)
-	t.Normalize(caser)
-
-	// Add timestamp
-	now := time.Now().UTC()
-	t.CreatedAt = now
-	t.UpdatedAt = now
 
 	// Execute the db operation with `NamedExecContext` to match the named placeholders
 	result, err := r.db.NamedExecContext(ctx, query, t)
@@ -75,7 +63,7 @@ func (r *teacherRepo) Delete(ctx context.Context, id int) error {
 
 	// If no rows were affected, the ID did not exist in the db
 	if rowsAffected == 0 {
-		return sql.ErrNoRows
+		return domain.ErrNotFound
 	}
 
 	return nil
@@ -84,14 +72,14 @@ func (r *teacherRepo) Delete(ctx context.Context, id int) error {
 func (r *teacherRepo) GetById(ctx context.Context, id int) (*domain.Teacher, error) {
 	var t domain.Teacher
 
-	query := "SELECT * FROM teachers WHERE id = ?"
+	query := "SELECT id, first_name, last_name, email, is_active, created_at, updated_at FROM teachers WHERE id = ?"
 
 	// Execute the query and assign it to the variable `t` if successful
 	err := r.db.GetContext(ctx, &t, query, id)
 	if err != nil {
 		// If the ID is not found
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+			return nil, domain.ErrNotFound
 		}
 
 		// Other errors
@@ -114,11 +102,10 @@ func (r *teacherRepo) List(ctx context.Context, limit int, offset int) ([]domain
 	}
 
 	// Get all columns from the table students, ordered by their ID, and limited to a certain number
-	query := "SELECT * FROM teachers ORDER BY id LIMIT ? OFFSET ?"
+	query := "SELECT id, first_name, last_name, email, is_active, created_at, updated_at FROM teachers ORDER BY id LIMIT ? OFFSET ?"
 
 	// Execute the db operation
-	err := r.db.SelectContext(ctx, &teachers, query, limit, offset)
-	if err != nil {
+	if err := r.db.SelectContext(ctx, &teachers, query, limit, offset); err != nil {
 		return nil, 0, fmt.Errorf("teacherRepo.List fetch: %w", err)
 	}
 
@@ -126,31 +113,7 @@ func (r *teacherRepo) List(ctx context.Context, limit int, offset int) ([]domain
 	return teachers, totalItems, nil
 }
 
-func (r *teacherRepo) Update(ctx context.Context, id int, input domain.PatchTeacherInput) (*domain.Teacher, error) {
-	// Fetch the current record from db
-	teacher, err := r.GetById(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("teacherRepo.Update fetch: %w", err)
-	}
-
-	// Overwrite only fields provided in the PATCH payload
-	if input.FirstName != nil {
-		teacher.FirstName = *input.FirstName
-	}
-	if input.LastName != nil {
-		teacher.LastName = *input.LastName
-	}
-	if input.Email != nil {
-		teacher.Email = *input.Email
-	}
-
-	// Normalize the entity as a whole
-	caser := cases.Title(language.English)
-	teacher.Normalize(caser)
-
-	// Apply timestamp
-	teacher.UpdatedAt = time.Now().UTC()
-
+func (r *teacherRepo) Update(ctx context.Context, t *domain.Teacher) error {
 	query := `
 		UPDATE teachers SET
 			first_name = :first_name,
@@ -160,11 +123,19 @@ func (r *teacherRepo) Update(ctx context.Context, id int, input domain.PatchTeac
 		WHERE id = :id
 	`
 
-	// Execute the SQL query using sqlx named placeholders
-	_, err = r.db.NamedExecContext(ctx, query, teacher)
+	result, err := r.db.NamedExecContext(ctx, query, t)
 	if err != nil {
-		return nil, fmt.Errorf("teacherRepo.Update execute: %w", err)
+		return fmt.Errorf("teacherRepo.Update execute: %w", err)
 	}
 
-	return teacher, nil
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("teacherService.Update rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return domain.ErrNotFound
+	}
+
+	return nil
 }
