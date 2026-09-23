@@ -3,7 +3,6 @@ package http
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -179,7 +178,6 @@ func (h *TeacherHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 			sendError(w, http.StatusNotFound, "Teacher not found", nil)
 			return
 		}
-		log.Printf("[ERROR] %v\n", err)
 		sendError(w, http.StatusInternalServerError, "Failed to update teacher", nil)
 		return
 	}
