@@ -20,8 +20,6 @@ func NewTeacherRepository(db *sqlx.DB) domain.TeacherRepository {
 	return &teacherRepo{db: db}
 }
 
-// TODO: refactor to service layer
-
 func (r *teacherRepo) Create(ctx context.Context, t *domain.Teacher) error {
 	query := `
 		INSERT INTO teachers (first_name, last_name, email, created_at, updated_at)
