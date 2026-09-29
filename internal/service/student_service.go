@@ -182,7 +182,7 @@ func (s *studentService) GetByID(ctx context.Context, id int) (*domain.Populated
 	return student, nil
 }
 
-func (s *studentService) List(ctx context.Context, limit int, offset int) ([]domain.PopulatedStudent, int, error) {
+func (s *studentService) List(ctx context.Context, limit, offset int) ([]domain.PopulatedStudent, int, error) {
 	// Enforce defensive pagination boundaries in the business layer
 	if limit <= 0 {
 		limit = 10
