@@ -15,7 +15,7 @@ type teacherAssignmentService struct {
 	caser cases.Caser
 }
 
-func NewTeacherAssignmentRepository(repo domain.TeacherAssignmentRepository) domain.TeacherAssignmentService {
+func NewTeacherAssignmentService(repo domain.TeacherAssignmentRepository) domain.TeacherAssignmentService {
 	return &teacherAssignmentService{
 		repo:  repo,
 		caser: cases.Title(language.English),
