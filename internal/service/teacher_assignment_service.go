@@ -41,10 +41,10 @@ func (s *teacherAssignmentService) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s *teacherAssignmentService) GetById(ctx context.Context, id int) (*domain.PopulatedTeacherAssignment, error) {
-	teacherAssignment, err := s.repo.GetById(ctx, id)
+func (s *teacherAssignmentService) GetByID(ctx context.Context, id int) (*domain.PopulatedTeacherAssignment, error) {
+	teacherAssignment, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("teacherAssignmentService.GetById: %w", err)
+		return nil, fmt.Errorf("teacherAssignmentService.GetByID: %w", err)
 	}
 
 	return teacherAssignment, nil

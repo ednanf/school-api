@@ -27,7 +27,7 @@ func (h *DepartmentHandler) DepartmentRoutes() chi.Router {
 	r.Get("/", h.HandleList)
 	r.Post("/", h.HandleCreate)
 	r.Delete("/{id}", h.HandleDelete)
-	r.Get("/{id}", h.HandleGetById)
+	r.Get("/{id}", h.HandleGetByID)
 	r.Patch("/{id}", h.HandleUpdate)
 
 	return r
@@ -79,7 +79,7 @@ func (h *DepartmentHandler) HandleDelete(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *DepartmentHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
+func (h *DepartmentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -87,7 +87,7 @@ func (h *DepartmentHandler) HandleGetById(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	dept, err := h.service.GetById(r.Context(), id)
+	dept, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			sendError(w, http.StatusNotFound, "Department not found", nil)

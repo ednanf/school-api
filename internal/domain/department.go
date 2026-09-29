@@ -11,7 +11,7 @@ import (
 type DepartmentRepository interface {
 	Create(ctx context.Context, d *Department) error
 	Delete(ctx context.Context, id int) error
-	GetById(ctx context.Context, id int) (*Department, error)
+	GetByID(ctx context.Context, id int) (*Department, error)
 	List(ctx context.Context, limit int, offset int) ([]Department, int, error)
 	Update(ctx context.Context, d *Department) error
 }
@@ -19,7 +19,7 @@ type DepartmentRepository interface {
 type DepartmentService interface {
 	Create(ctx context.Context, d *Department) error
 	Delete(ctx context.Context, id int) error
-	GetById(ctx context.Context, id int) (*Department, error)
+	GetByID(ctx context.Context, id int) (*Department, error)
 	List(ctx context.Context, page, limit int) (items []Department, totalItems, pageNum, limitNum int, err error)
 	Update(ctx context.Context, id int, input PatchDepartmentInput) (*Department, error)
 }

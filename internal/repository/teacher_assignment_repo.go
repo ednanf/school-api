@@ -68,7 +68,7 @@ func (r *taRepo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *taRepo) GetById(ctx context.Context, id int) (*domain.PopulatedTeacherAssignment, error) {
+func (r *taRepo) GetByID(ctx context.Context, id int) (*domain.PopulatedTeacherAssignment, error) {
 	var t domain.PopulatedTeacherAssignment
 
 	query := `
@@ -159,7 +159,7 @@ func (r *taRepo) Update(ctx context.Context, id int, input domain.PatchTeacherAs
 
 	// If there are no changes in the input payload
 	if len(setClauses) == 0 {
-		return r.GetById(ctx, id)
+		return r.GetByID(ctx, id)
 	}
 
 	// Add timestamp clause + argument
@@ -189,6 +189,6 @@ func (r *taRepo) Update(ctx context.Context, id int, input domain.PatchTeacherAs
 		return nil, domain.ErrNotFound
 	}
 
-	// Return the hydrating the nested objects (due to how GetById works)
-	return r.GetById(ctx, id)
+	// Return the hydrating the nested objects (due to how GetByID works)
+	return r.GetByID(ctx, id)
 }

@@ -29,7 +29,7 @@ func (h *TeacherAssignmentHandler) TeacherAssignmentRoutes() chi.Router {
 	r.Get("/", h.HandleList)
 	r.Post("/", h.HandleCreate)
 	r.Delete("/{id}", h.HandleDelete)
-	r.Get("/{id}", h.HandleGetById)
+	r.Get("/{id}", h.HandleGetByID)
 	r.Patch("/{id}", h.HandleUpdate)
 
 	return r
@@ -90,7 +90,7 @@ func (h *TeacherAssignmentHandler) HandleDelete(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *TeacherAssignmentHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
+func (h *TeacherAssignmentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -99,7 +99,7 @@ func (h *TeacherAssignmentHandler) HandleGetById(w http.ResponseWriter, r *http.
 	}
 
 	// Search for the assignment (returns domain.PopulatedTeacherAssignment)
-	t, err := h.service.GetById(r.Context(), id)
+	t, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Database error", nil)
 		return

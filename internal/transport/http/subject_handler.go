@@ -30,7 +30,7 @@ func (h *SubjectHandler) SubjectRoutes() chi.Router {
 	r.Get("/", h.HandleList)
 	r.Post("/", h.HandleCreate)
 	r.Delete("/{id}", h.HandleDelete)
-	r.Get("/{id}", h.HandleGetById)
+	r.Get("/{id}", h.HandleGetByID)
 	r.Patch("/{id}", h.HandleUpdate)
 
 	return r
@@ -89,7 +89,7 @@ func (h *SubjectHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *SubjectHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
+func (h *SubjectHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the URL param
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
@@ -99,7 +99,7 @@ func (h *SubjectHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Search for subject
-	subject, err := h.service.GetById(r.Context(), id)
+	subject, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Database error", nil)
 		return

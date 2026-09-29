@@ -10,7 +10,7 @@ import (
 type ClassRepository interface {
 	Create(ctx context.Context, class *Class) error
 	Delete(ctx context.Context, id int) error
-	GetById(ctx context.Context, id int) (*Class, error)
+	GetByID(ctx context.Context, id int) (*Class, error)
 	List(ctx context.Context, limit int, offset int) ([]Class, int, error)
 	ListStudentsByClassId(ctx context.Context, classID int, limit int, offset int) ([]Student, int, error)
 	Update(ctx context.Context, c *Class) error
@@ -19,7 +19,7 @@ type ClassRepository interface {
 type ClassService interface {
 	Create(ctx context.Context, c *Class) error
 	Delete(ctx context.Context, id int) error
-	GetById(ctx context.Context, id int) (*Class, error)
+	GetByID(ctx context.Context, id int) (*Class, error)
 	List(ctx context.Context, page, limit int) (items []Class, totalItems, pageNum, limitNum int, err error)
 	ListStudentsByClassId(ctx context.Context, classID int, page int, limit int) (items []Student, totalItmes, pageNum, limitNum int, err error)
 	Update(ctx context.Context, id int, input PatchClassInput) (*Class, error)

@@ -47,11 +47,11 @@ func (s *subjectService) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s *subjectService) GetById(ctx context.Context, id int) (*domain.Subject, error) {
+func (s *subjectService) GetByID(ctx context.Context, id int) (*domain.Subject, error) {
 	// Execute the repository step
-	subject, err := s.repo.GetById(ctx, id)
+	subject, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("subjectService.GetById: %w", err)
+		return nil, fmt.Errorf("subjectService.GetByID: %w", err)
 	}
 
 	return subject, nil
@@ -80,7 +80,7 @@ func (s *subjectService) List(ctx context.Context, page, limit int) (items []dom
 
 func (s *subjectService) Update(ctx context.Context, id int, input domain.PatchSubjectInput) (*domain.Subject, error) {
 	// Fetch current record
-	subject, err := s.repo.GetById(ctx, id)
+	subject, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("subjectService.Update fetch: %w", err)
 	}

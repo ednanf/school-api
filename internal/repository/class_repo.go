@@ -67,7 +67,7 @@ func (r *classRepo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *classRepo) GetById(ctx context.Context, id int) (*domain.Class, error) {
+func (r *classRepo) GetByID(ctx context.Context, id int) (*domain.Class, error) {
 	var c domain.Class
 
 	query := "SELECT id, grade, letter, is_active, created_at, updated_at FROM classes WHERE id = ?"
@@ -77,7 +77,7 @@ func (r *classRepo) GetById(ctx context.Context, id int) (*domain.Class, error) 
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, domain.ErrNotFound
 		}
-		return nil, fmt.Errorf("classRepo.GetById execute: %w", err)
+		return nil, fmt.Errorf("classRepo.GetByID execute: %w", err)
 	}
 
 	return &c, nil

@@ -58,7 +58,7 @@ func (r *departmentRepo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *departmentRepo) GetById(ctx context.Context, id int) (*domain.Department, error) {
+func (r *departmentRepo) GetByID(ctx context.Context, id int) (*domain.Department, error) {
 	var d domain.Department
 
 	query := "SELECT id, name, description, created_at, updated_at FROM departments WHERE id = ?"
@@ -67,7 +67,7 @@ func (r *departmentRepo) GetById(ctx context.Context, id int) (*domain.Departmen
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, domain.ErrNotFound
 		}
-		return nil, fmt.Errorf("departmentRepo.GetById execute: %w", err)
+		return nil, fmt.Errorf("departmentRepo.GetByID execute: %w", err)
 	}
 
 	return &d, nil

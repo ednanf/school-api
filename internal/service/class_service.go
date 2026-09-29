@@ -46,10 +46,10 @@ func (s *classService) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s *classService) GetById(ctx context.Context, id int) (*domain.Class, error) {
-	class, err := s.repo.GetById(ctx, id)
+func (s *classService) GetByID(ctx context.Context, id int) (*domain.Class, error) {
+	class, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("classService.GetById: %w", err)
+		return nil, fmt.Errorf("classService.GetByID: %w", err)
 	}
 
 	return class, nil
@@ -99,7 +99,7 @@ func (s *classService) ListStudentsByClassId(ctx context.Context, classID int, p
 
 func (s *classService) Update(ctx context.Context, id int, input domain.PatchClassInput) (*domain.Class, error) {
 	// Fetch current record
-	class, err := s.repo.GetById(ctx, id)
+	class, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("classService.Update fetch: %w", err)
 	}

@@ -46,10 +46,10 @@ func (s *teacherService) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s *teacherService) GetById(ctx context.Context, id int) (*domain.Teacher, error) {
-	teacher, err := s.repo.GetById(ctx, id)
+func (s *teacherService) GetByID(ctx context.Context, id int) (*domain.Teacher, error) {
+	teacher, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("teacherService.GetById: %w", err)
+		return nil, fmt.Errorf("teacherService.GetByID: %w", err)
 	}
 	return teacher, nil
 }
@@ -77,7 +77,7 @@ func (s *teacherService) List(ctx context.Context, page, limit int) (items []dom
 
 func (s *teacherService) Update(ctx context.Context, id int, input domain.PatchTeacherInput) (*domain.Teacher, error) {
 	// Fetch current record
-	teacher, err := s.repo.GetById(ctx, id)
+	teacher, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("teacherService.Update: %w", err)
 	}

@@ -46,10 +46,10 @@ func (s *departmentService) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s *departmentService) GetById(ctx context.Context, id int) (*domain.Department, error) {
-	dept, err := s.repo.GetById(ctx, id)
+func (s *departmentService) GetByID(ctx context.Context, id int) (*domain.Department, error) {
+	dept, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("departmentService.GetById: %w", err)
+		return nil, fmt.Errorf("departmentService.GetByID: %w", err)
 	}
 
 	return dept, nil
@@ -78,7 +78,7 @@ func (s *departmentService) List(ctx context.Context, page, limit int) (items []
 
 func (s *departmentService) Update(ctx context.Context, id int, input domain.PatchDepartmentInput) (*domain.Department, error) {
 	// Fetch current record
-	department, err := s.repo.GetById(ctx, id)
+	department, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("departmentService.Update fetch: %w", err)
 	}

@@ -31,7 +31,7 @@ func (h *ClassHandler) ClassRoutes() chi.Router {
 	r.Post("/", h.HandleCreate)
 	r.Get("/{id}/students", h.HandleListStudentsByClassId)
 	r.Delete("/{id}", h.HandleDelete)
-	r.Get("/{id}", h.HandleGetById)
+	r.Get("/{id}", h.HandleGetByID)
 	r.Patch("/{id}", h.HandleUpdate)
 
 	return r
@@ -92,7 +92,7 @@ func (h *ClassHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *ClassHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
+func (h *ClassHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the URL param
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
@@ -102,7 +102,7 @@ func (h *ClassHandler) HandleGetById(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Search for class
-	class, err := h.service.GetById(r.Context(), id)
+	class, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Database error", nil)
 		return

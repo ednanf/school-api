@@ -66,7 +66,7 @@ func (r *subjectRepo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *subjectRepo) GetById(ctx context.Context, id int) (*domain.Subject, error) {
+func (r *subjectRepo) GetByID(ctx context.Context, id int) (*domain.Subject, error) {
 	var s domain.Subject
 
 	query := "SELECT id, name, is_active, created_at, updated_at FROM subjects WHERE id = ?"
@@ -79,7 +79,7 @@ func (r *subjectRepo) GetById(ctx context.Context, id int) (*domain.Subject, err
 		}
 
 		// Other errors
-		return nil, fmt.Errorf("subjectRepo.GetById execute: %w", err)
+		return nil, fmt.Errorf("subjectRepo.GetByID execute: %w", err)
 	}
 
 	return &s, nil

@@ -12,7 +12,7 @@ import (
 type TeacherRepository interface {
 	Create(ctx context.Context, t *Teacher) error
 	Delete(ctx context.Context, id int) error
-	GetById(ctx context.Context, id int) (*Teacher, error)
+	GetByID(ctx context.Context, id int) (*Teacher, error)
 	List(ctx context.Context, limit int, offset int) ([]Teacher, int, error)
 	Update(ctx context.Context, t *Teacher) error
 }
@@ -20,7 +20,7 @@ type TeacherRepository interface {
 type TeacherService interface {
 	Create(ctx context.Context, t *Teacher) error
 	Delete(ctx context.Context, id int) error
-	GetById(ctx context.Context, id int) (*Teacher, error)
+	GetByID(ctx context.Context, id int) (*Teacher, error)
 	List(ctx context.Context, page, limit int) (items []Teacher, totalItems, pageNum, limitNum int, err error)
 	Update(ctx context.Context, id int, input PatchTeacherInput) (*Teacher, error)
 }

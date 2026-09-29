@@ -67,7 +67,7 @@ func (r *teacherRepo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *teacherRepo) GetById(ctx context.Context, id int) (*domain.Teacher, error) {
+func (r *teacherRepo) GetByID(ctx context.Context, id int) (*domain.Teacher, error) {
 	var t domain.Teacher
 
 	query := "SELECT id, first_name, last_name, email, is_active, created_at, updated_at FROM teachers WHERE id = ?"

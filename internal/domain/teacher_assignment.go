@@ -9,7 +9,7 @@ import (
 type TeacherAssignmentRepository interface {
 	Create(ctx context.Context, t *TeacherAssignment) error
 	Delete(ctx context.Context, id int) error
-	GetById(ctx context.Context, id int) (*PopulatedTeacherAssignment, error)
+	GetByID(ctx context.Context, id int) (*PopulatedTeacherAssignment, error)
 	List(ctx context.Context, limit, offset int) ([]PopulatedTeacherAssignment, int, error)
 	Update(ctx context.Context, id int, input PatchTeacherAssignmentInput) (*PopulatedTeacherAssignment, error)
 }
@@ -17,7 +17,7 @@ type TeacherAssignmentRepository interface {
 type TeacherAssignmentService interface {
 	Create(ctx context.Context, t *TeacherAssignment) error
 	Delete(ctx context.Context, id int) error
-	GetById(ctx context.Context, id int) (*PopulatedTeacherAssignment, error)
+	GetByID(ctx context.Context, id int) (*PopulatedTeacherAssignment, error)
 	List(ctx context.Context, page, limit int) (items []PopulatedTeacherAssignment, totalItems, pageNum, limitNum int, err error)
 	Update(ctx context.Context, id int, input PatchTeacherAssignmentInput) (*PopulatedTeacherAssignment, error)
 }

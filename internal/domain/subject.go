@@ -12,7 +12,7 @@ import (
 type SubjectRepository interface {
 	Create(ctx context.Context, s *Subject) error
 	Delete(ctx context.Context, id int) error
-	GetById(ctx context.Context, id int) (*Subject, error)
+	GetByID(ctx context.Context, id int) (*Subject, error)
 	List(ctx context.Context, limit int, offset int) ([]Subject, int, error)
 	Update(ctx context.Context, s *Subject) error
 }
@@ -20,7 +20,7 @@ type SubjectRepository interface {
 type SubjectService interface {
 	Create(ctx context.Context, sub *Subject) error
 	Delete(ctx context.Context, id int) error
-	GetById(ctx context.Context, id int) (*Subject, error)
+	GetByID(ctx context.Context, id int) (*Subject, error)
 	List(ctx context.Context, page, limit int) (items []Subject, totalItems, pageNum, limitNum int, err error)
 	Update(ctx context.Context, id int, input PatchSubjectInput) (*Subject, error)
 }
