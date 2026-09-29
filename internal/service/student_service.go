@@ -182,6 +182,27 @@ func (s *studentService) GetByID(ctx context.Context, id int) (*domain.Populated
 	return student, nil
 }
 
+func (s *studentService) List(ctx context.Context, limit int, offset int) ([]domain.PopulatedStudent, int, error) {
+	// Enforce defensive pagination boundaries in the business layer
+	if limit <= 0 {
+		limit = 10
+	} else if limit > 100 {
+		limit = 100
+	}
+
+	if offset < 0 {
+		offset = 0
+	}
+
+	// Delegate fetching and total count to repository
+	students, total, err := s.repo.List(ctx, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("studentService.List: %w", err)
+	}
+
+	return students, total, nil
+}
+
 func (s *studentService) Update(ctx context.Context, id int, input domain.PatchStudentInput) (*domain.Student, error) {
 	// Fetch current record to build full entity state
 	existing, err := s.repo.GetByID(ctx, id)
@@ -228,25 +249,4 @@ func (s *studentService) Update(ctx context.Context, id int, input domain.PatchS
 	}
 
 	return &student, nil
-}
-
-func (s *studentService) List(ctx context.Context, limit int, offset int) ([]domain.PopulatedStudent, int, error) {
-	// Enforce defensive pagination boundaries in the business layer
-	if limit <= 0 {
-		limit = 10
-	} else if limit > 100 {
-		limit = 100
-	}
-
-	if offset < 0 {
-		offset = 0
-	}
-
-	// Delegate fetching and total count to repository
-	students, total, err := s.repo.List(ctx, limit, offset)
-	if err != nil {
-		return nil, 0, fmt.Errorf("studentService.List: %w", err)
-	}
-
-	return students, total, nil
 }
