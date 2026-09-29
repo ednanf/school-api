@@ -243,7 +243,7 @@ func (r *studentRepo) GetByID(ctx context.Context, id int) (*domain.PopulatedStu
 }
 
 // List takes a context, limit and offset and returns a slice, a total and errors
-func (r *studentRepo) List(ctx context.Context, limit int, offset int) ([]domain.PopulatedStudent, int, error) {
+func (r *studentRepo) List(ctx context.Context, limit, offset int) ([]domain.PopulatedStudent, int, error) {
 	countQuery := "SELECT COUNT(*) FROM students"
 	var total int
 	if err := r.db.GetContext(ctx, &total, countQuery); err != nil {
