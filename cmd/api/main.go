@@ -64,7 +64,8 @@ func main() {
 
 	// Initialize repository (struct that encapsulates all database access logic) and handlers
 	studentRepo := repository.NewStudentRepository(db)
-	studentHandler := transportHttp.NewStudentHandler(studentRepo, validate)
+	studentService := service.NewStudentService(studentRepo)
+	studentHandler := transportHttp.NewStudentHandler(studentService, validate)
 
 	classRepo := repository.NewClassRepository(db)
 	classService := service.NewClassService(classRepo)
@@ -79,7 +80,7 @@ func main() {
 	teacherHandler := transportHttp.NewTeacherHandler(teacherService, validate)
 
 	teacherAssignmentRepo := repository.NewTeacherAssignmentRepository(db)
-	teacherAssignmentService := service.NewTeacherAssignmentRepository(teacherAssignmentRepo)
+	teacherAssignmentService := service.NewTeacherAssignmentService(teacherAssignmentRepo)
 	teacherAssignmentHandler := transportHttp.NewTeacherAssignmentHandler(teacherAssignmentService, validate)
 
 	departmentRepo := repository.NewDepartmentRepository(db)

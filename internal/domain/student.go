@@ -12,8 +12,22 @@ import (
 type StudentRepository interface {
 	BulkCreate(ctx context.Context, students []Student) ([]Student, int, error)
 	BulkDelete(ctx context.Context, ids []int) (int64, error)
+	BulkUpdate(ctx context.Context, students []Student) (int64, error)
+	BulkUpdateClass(ctx context.Context, ids []int, classID int, updatedAt time.Time) (int64, error)
+
+	Create(ctx context.Context, s *Student) error
+	Delete(ctx context.Context, id int) error
+	GetByID(ctx context.Context, id int) (*PopulatedStudent, error)
+	List(ctx context.Context, limit int, offset int) ([]PopulatedStudent, int, error)
+	Update(ctx context.Context, s *Student) error
+}
+
+type StudentService interface {
+	BulkCreate(ctx context.Context, students []Student) ([]Student, int, error)
+	BulkDelete(ctx context.Context, ids []int) (int64, error)
 	BulkUpdate(ctx context.Context, updates []BulkUpdateStudentItem) ([]Student, int, error)
 	BulkUpdateClass(ctx context.Context, ids []int, classID int) (int64, error)
+
 	Create(ctx context.Context, s *Student) error
 	Delete(ctx context.Context, id int) error
 	GetByID(ctx context.Context, id int) (*PopulatedStudent, error)
@@ -28,6 +42,7 @@ type Student struct {
 	LastName  string    `json:"last_name" db:"last_name" validate:"required,min=2,max=50"`
 	Email     string    `json:"email" db:"email" validate:"required,email"`
 	ClassID   int       `json:"class_id" db:"class_id" validate:"required,gt=0"`
+	IsActive  bool      `json:"is_active" db:"is_active" validate:"required"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
@@ -39,6 +54,7 @@ type PopulatedStudent struct {
 	LastName  string       `json:"last_name" db:"last_name"`
 	Email     string       `json:"email" db:"email"`
 	Class     ClassSummary `json:"class" db:"class"`
+	IsActive  bool         `json:"is_active" db:"is_active"`
 	CreatedAt time.Time    `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time    `json:"updated_at" db:"updated_at"`
 }
@@ -50,6 +66,7 @@ type PatchStudentInput struct {
 	LastName  *string `json:"last_name" validate:"omitempty,min=2,max=100"`
 	Email     *string `json:"email" validate:"omitempty,email"`
 	ClassID   *int    `json:"class_id" validate:"omitempty,gt=0"`
+	IsActive  *bool   `json:"is_active" validate:"omitempty"`
 }
 
 // BulkCreateStudentInput defines the JSON payload for inserting multiple students

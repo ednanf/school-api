@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -14,13 +15,13 @@ import (
 
 // StudentHandler contains `repo` with a way to communicate with the database and the pointer to the validator instantiated once in `main.go`
 type StudentHandler struct {
-	repo     domain.StudentRepository
+	service  domain.StudentService
 	validate *validator.Validate
 }
 
 // NewStudentHandler is a constructor that returns a pointer to a StudentHandler struct, initializing it with the injected repository and validator dependencies
-func NewStudentHandler(repo domain.StudentRepository, validate *validator.Validate) *StudentHandler {
-	return &StudentHandler{repo: repo, validate: validate}
+func NewStudentHandler(service domain.StudentService, validate *validator.Validate) *StudentHandler {
+	return &StudentHandler{service: service, validate: validate}
 }
 
 // Route paths
@@ -41,16 +42,15 @@ func (h *StudentHandler) StudentRoutes() chi.Router {
 }
 
 func (h *StudentHandler) HandleBulkCreate(w http.ResponseWriter, r *http.Request) {
-	// Instantiate a variable to hold the payload according to the DTO (for validation and structure)
 	var input domain.BulkCreateStudentInput
 
-	// Decode the body and store into the variable
+	// Decode HTTP body into DTO
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
 		return
 	}
 
-	// Validate the payload
+	// Validate incoming payload constraints
 	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
@@ -60,36 +60,34 @@ func (h *StudentHandler) HandleBulkCreate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Create the new students
-	createdStudents, total, err := h.repo.BulkCreate(r.Context(), input.Students)
+	// Delegate business logic, fetching, normalization, and persistence to service
+	createdStudents, total, err := h.service.BulkCreate(r.Context(), input.Students)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to create students", nil)
 		return
 	}
 
-	result := BatchResult[domain.Student]{
+	result := BulkResult[domain.Student]{
 		Items: createdStudents,
-		Meta: BatchMeta{
+		Meta: BulkMeta{
 			Count: len(createdStudents),
 			Total: total,
 		},
 	}
 
-	// Return 201 with the created students
 	sendSuccess(w, http.StatusCreated, "Students created successfully", result)
 }
 
 func (h *StudentHandler) HandleBulkDelete(w http.ResponseWriter, r *http.Request) {
-	// Instantiate a variable to hold the IDs to be deleted
 	var input domain.BulkDeleteStudentInput
 
-	// Decode the body and store in the variable
+	// Decode HTTP body into DTO
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
 		return
 	}
 
-	// Validate the payload
+	// Validate incoming payload constraints
 	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
@@ -99,30 +97,31 @@ func (h *StudentHandler) HandleBulkDelete(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// BatchDelete will return the number of rows affected by the query
-	deletedCount, err := h.repo.BulkDelete(r.Context(), input.IDs)
+	// Delegate business logic, fetching, and persistence to service
+	deletedCount, err := h.service.BulkDelete(r.Context(), input.IDs)
 	if err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to delete students in batch", nil)
 		return
 	}
 
-	// Send a simple 200 with the number of deleted students
-	sendSuccess(w, http.StatusOK, "", map[string]any{
-		"total": deletedCount,
-	})
+	meta := BulkMeta{
+		Count: int(deletedCount),
+		Total: len(input.IDs),
+	}
+
+	sendSuccess(w, http.StatusOK, "Students deleted successfully", meta)
 }
 
 func (h *StudentHandler) HandleBulkUpdate(w http.ResponseWriter, r *http.Request) {
-	// Instantiate a variable to hold the payload
 	var input domain.BulkUpdateStudentInput
 
-	// Decode the body and store in the variable
+	// Decode HTTP body into DTO
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
 		return
 	}
 
-	// Validate using standard StructCtx
+	// Validate incoming payload constraints
 	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
@@ -132,36 +131,38 @@ func (h *StudentHandler) HandleBulkUpdate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Execute the db operation
-	updatedStudents, total, err := h.repo.BulkUpdate(r.Context(), input.Students)
+	// Delegate business logic, fetching, normalization, and persistence to service
+	updatedStudents, total, err := h.service.BulkUpdate(r.Context(), input.Students)
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "Failed to update students", nil)
+		if errors.Is(err, sql.ErrNoRows) {
+			sendError(w, http.StatusNotFound, "One or more target students were not found", nil)
+			return
+		}
+		sendError(w, http.StatusInternalServerError, "Failed to update students in batch", nil)
 		return
 	}
 
-	// Format the results
-	result := BatchResult[domain.Student]{
+	result := BulkResult[domain.Student]{
 		Items: updatedStudents,
-		Meta: BatchMeta{
+		Meta: BulkMeta{
 			Count: len(updatedStudents),
 			Total: total,
 		},
 	}
 
-	sendSuccess(w, http.StatusOK, "", result)
+	sendSuccess(w, http.StatusOK, "Students updated successfully", result)
 }
 
 func (h *StudentHandler) HandleBulkUpdateClass(w http.ResponseWriter, r *http.Request) {
-	// Instantiate a variable to hold the payload
 	var input domain.BulkUpdateClassInput
 
-	// Decode te JSON payload
+	// Decode HTTP body into DTO
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
 		return
 	}
 
-	// Execute the db operation
+	// Validate incoming payload constraints
 	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
@@ -171,37 +172,35 @@ func (h *StudentHandler) HandleBulkUpdateClass(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Obtain the number of affected rows
-	rowsAffected, err := h.repo.BulkUpdateClass(r.Context(), input.StudentIDs, input.ClassID)
+	// Delegate business logic, fetching, normalization, and persistence to service
+	rowsAffected, err := h.service.BulkUpdateClass(r.Context(), input.StudentIDs, input.ClassID)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			sendError(w, http.StatusNotFound, "Target class does not exist", nil)
+			sendError(w, http.StatusNotFound, "Target class or students not found", nil)
 			return
 		}
 		sendError(w, http.StatusInternalServerError, "Failed to update students class", nil)
 		return
 	}
 
-	// Format the results
-	result := map[string]any{
-		"rows_affected": rowsAffected,
-		"class_id":      input.ClassID,
+	meta := BulkMeta{
+		Count: int(rowsAffected),
+		Total: len(input.StudentIDs),
 	}
 
-	sendSuccess(w, http.StatusOK, "", result)
+	sendSuccess(w, http.StatusOK, "Class updated successfully", meta)
 }
 
 func (h *StudentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
-	// Initialize a Student struct
 	var student domain.Student
 
-	// Decode the JSON body directly into the struct via pointer
+	// Decode JSON body directly into domain.Student
 	if err := json.NewDecoder(r.Body).Decode(&student); err != nil {
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
 		return
 	}
 
-	// Validate struct rules using the injected validator instance
+	// Validate struct rules using validator instance
 	if err := h.validate.StructCtx(r.Context(), &student); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
@@ -211,18 +210,18 @@ func (h *StudentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Save to the db via the repository
-	if err := h.repo.Create(r.Context(), &student); err != nil {
+	// Delegate normalization, timing, and persistence to service layer
+	if err := h.service.Create(r.Context(), &student); err != nil {
 		sendError(w, http.StatusInternalServerError, "Failed to create student entry", nil)
 		return
 	}
 
-	// Return 201 Created with the full record (including generated ID and timestamps)
+	// Return 201 Created with full record (ID and timestamps attached in place)
 	sendSuccess(w, http.StatusCreated, "Student created successfully", student)
 }
 
 func (h *StudentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
-	// Extract and convert the URL param to int
+	// Extract and convert URL param to integer
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -230,25 +229,23 @@ func (h *StudentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Execute the db operation
-	if err = h.repo.Delete(r.Context(), id); err != nil {
-		// 404 when student was not found
-		if errors.Is(err, sql.ErrNoRows) {
+	// Delegate deletion to service layer
+	if err := h.service.Delete(r.Context(), id); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
 			sendError(w, http.StatusNotFound, "Student not found", nil)
 			return
 		}
 
-		// 500 for db connection or syntax errors
 		sendError(w, http.StatusInternalServerError, "Failed to delete student", nil)
 		return
 	}
 
-	// 204 status requires no JSON body, therefore, no `sendSuccess`
+	// HTTP 204 No Content for successful deletion (no body needed)
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *StudentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
-	// Get id from URL
+	// Extract and convert URL param to integer
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -256,62 +253,57 @@ func (h *StudentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Search for student
-	student, err := h.repo.GetByID(r.Context(), id)
+	// Delegate fetching to the service layer
+	student, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "Database error", nil)
+		if errors.Is(err, domain.ErrNotFound) {
+			sendError(w, http.StatusNotFound, "Student not found", nil)
+			return
+		}
+
+		sendError(w, http.StatusInternalServerError, "Failed to fetch student", nil)
 		return
 	}
-
-	// If the student does not exist
-	if student == nil {
-		sendError(w, http.StatusNotFound, "Student not found", nil)
-		return
-	}
-
-	sendSuccess(w, http.StatusOK, "", student)
+	sendSuccess(w, http.StatusOK, "Student retrieved successfully", student)
 }
 
 func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
-	// Parse query parameters correctly from r.URL.Query()
 	queryParams := r.URL.Query()
-	limitStr := queryParams.Get("limit")
-	pageStr := queryParams.Get("page")
 
-	// Defaults
-	limit := 10
+	// Parse page (default: 1)
 	page := 1
-
-	// Convert string query params to integers
-	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
-		limit = l
+	if pageStr := queryParams.Get("page"); pageStr != "" {
+		if parsedPage, err := strconv.Atoi(pageStr); err == nil && parsedPage > 0 {
+			page = parsedPage
+		}
 	}
 
-	// Limit cap to prevent abuse
-	if limit > 100 {
-		limit = 100
+	// Parse limit (default: 10)
+	limit := 10
+	if limitStr := queryParams.Get("limit"); limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
 	}
 
-	if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
-		page = p
-	}
-
-	// Calculate the database offset derived from page number
+	// Derive SQL offset
 	offset := (page - 1) * limit
 
-	// Call the repository with context and parsed pagination
-	students, totalItems, err := h.repo.List(r.Context(), limit, offset)
+	// Delegate paginated fetch and total count calculation to service layer
+	students, totalItems, err := h.service.List(r.Context(), limit, offset)
 	if err != nil {
-		sendError(w, http.StatusInternalServerError, "Failed to fetch students", nil)
+		fmt.Println(err)
+		sendError(w, http.StatusInternalServerError, "Failed to fetch student list", nil)
 		return
 	}
 
-	// Calculate total pages safely
+	// Calculate total pages using integer arithmetic
 	totalPages := 0
 	if totalItems > 0 {
 		totalPages = (totalItems + limit - 1) / limit
 	}
 
+	// Construct metadata and issue generic paginated response
 	meta := PaginatedMeta{
 		Page:       page,
 		Limit:      limit,
@@ -320,12 +312,11 @@ func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 		TotalPages: totalPages,
 	}
 
-	// Returns [] instead of null if empty because studentRepo initializes an empty slice
 	sendPaginated(w, http.StatusOK, students, meta)
 }
 
 func (h *StudentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
-	// Extract and convert the id to int
+	// Extract and convert student ID from URL path parameter
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -333,14 +324,14 @@ func (h *StudentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Decode the request's body into the pointer-based PATCH DTO
+	// Decode HTTP body into PatchStudentInput DTO
 	var input domain.PatchStudentInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
 		return
 	}
 
-	// Validate optional field constraints (using omitempty rules)
+	// Validate patch payload constraints
 	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
@@ -350,10 +341,10 @@ func (h *StudentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Perform the update in the db
-	updatedStudent, err := h.repo.Update(r.Context(), id, input)
+	// Delegate fetching, patch merging, normalization, and updates to service layer
+	updatedStudent, err := h.service.Update(r.Context(), id, input)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, domain.ErrNotFound) {
 			sendError(w, http.StatusNotFound, "Student not found", nil)
 			return
 		}
@@ -361,6 +352,5 @@ func (h *StudentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return 200 with the updated record
-	sendSuccess(w, http.StatusOK, "", updatedStudent)
+	sendSuccess(w, http.StatusOK, "Student updated successfully", updatedStudent)
 }

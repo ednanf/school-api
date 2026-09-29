@@ -172,3 +172,81 @@ func (s *studentService) Delete(ctx context.Context, id int) error {
 
 	return nil
 }
+
+func (s *studentService) GetByID(ctx context.Context, id int) (*domain.PopulatedStudent, error) {
+	student, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("studentService.GetByID: %w", err)
+	}
+
+	return student, nil
+}
+
+func (s *studentService) Update(ctx context.Context, id int, input domain.PatchStudentInput) (*domain.Student, error) {
+	// Fetch current record to build full entity state
+	existing, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("studentService.Update fetch: %w", err)
+	}
+
+	// Map existing PopulatedStudent record to domain.Student
+	student := domain.Student{
+		ID:        existing.ID,
+		FirstName: existing.FirstName,
+		LastName:  existing.LastName,
+		Email:     existing.Email,
+		ClassID:   existing.Class.ID,
+		IsActive:  existing.IsActive,
+		CreatedAt: existing.CreatedAt,
+		UpdatedAt: existing.UpdatedAt,
+	}
+
+	// Apply non-nil patch updates
+	if input.FirstName != nil {
+		student.FirstName = *input.FirstName
+	}
+	if input.LastName != nil {
+		student.LastName = *input.LastName
+	}
+	if input.Email != nil {
+		student.Email = *input.Email
+	}
+	if input.ClassID != nil {
+		student.ClassID = *input.ClassID
+	}
+	if input.IsActive != nil {
+		student.IsActive = *input.IsActive
+	}
+
+	// Normalize string fields and update timestamp
+	student.Normalize(s.caser)
+	student.UpdatedAt = time.Now().UTC()
+
+	// Persist merged entity via repository
+	if err := s.repo.Update(ctx, &student); err != nil {
+		return nil, fmt.Errorf("studentService.Update: %w", err)
+	}
+
+	return &student, nil
+}
+
+func (s *studentService) List(ctx context.Context, limit int, offset int) ([]domain.PopulatedStudent, int, error) {
+	// Enforce defensive pagination boundaries in the business layer
+	if limit <= 0 {
+		limit = 10
+	} else if limit > 100 {
+		limit = 100
+	}
+
+	if offset < 0 {
+		offset = 0
+	}
+
+	// Delegate fetching and total count to repository
+	students, total, err := s.repo.List(ctx, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("studentService.List: %w", err)
+	}
+
+	return students, total, nil
+}

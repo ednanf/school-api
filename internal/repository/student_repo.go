@@ -9,8 +9,6 @@ import (
 
 	"github.com/ednanf/school-api/internal/domain"
 	"github.com/jmoiron/sqlx"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 // studentRepo stores the db connnection and the repository methods attached to it
@@ -29,51 +27,39 @@ func (r *studentRepo) BulkCreate(ctx context.Context, students []domain.Student)
 		return students, 0, nil
 	}
 
-	// Initiate a db transaction with the context
+	// Initiate a db transaction and defer a rollback in case of errors
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
-		return nil, 0, fmt.Errorf("studentRepo.BatchCreate begin tx: %w", err)
+		return nil, 0, fmt.Errorf("studentRepo.BulkCreate begin tx: %w", err)
 	}
-
-	// Should any error occur, roll back the database
 	defer tx.Rollback()
 
 	query := `
-		INSERT INTO students (first_name, last_name, email, class_id, created_at, updated_at)
-		VALUES (:first_name, :last_name, :email, :class_id, :created_at, :updated_at)
+		INSERT INTO students (first_name, last_name, email, class_id, is_active, created_at, updated_at)
+		VALUES (:first_name, :last_name, :email, :class_id, :is_active, :created_at, :updated_at)
 	`
-	caser := cases.Title(language.English)
-	now := time.Now().UTC()
+
 	total := 0
 
-	// Loop the student slice argument
+	// Loop through the students slice and execute the queries
 	for i := range students {
-		// Add timestamps
-		students[i].Normalize(caser)
-		students[i].CreatedAt = now
-		students[i].UpdatedAt = now
-
-		// Execute the database operation in the ongoing transaction
 		res, err := tx.NamedExecContext(ctx, query, students[i])
 		if err != nil {
-			return nil, 0, fmt.Errorf("studentRepo.BatchCreate insert: %w", err)
+			return nil, 0, fmt.Errorf("studentRepo.BulkCreate insert at index %d: %w", i, err)
 		}
 
-		// Retrieve the newly inserted entry's id to be able to send a response
 		id, err := res.LastInsertId()
 		if err != nil {
-			return nil, 0, fmt.Errorf("studentRepo.BatchCreate last insert id: %w", err)
+			return nil, 0, fmt.Errorf("studentRepo.BulkCreate last insert id at index %d: %w", i, err)
 		}
 
-		// Assign the received id to the entry in order to show in the response
 		students[i].ID = int(id)
-
 		total++
 	}
 
-	// Commit the database changes
+	// Commit the trasaction to the database
 	if err := tx.Commit(); err != nil {
-		return nil, 0, fmt.Errorf("studentRepo.BatchCreate commit: %w", err)
+		return nil, 0, fmt.Errorf("studentRepo.BulkCreate commit: %w", err)
 	}
 
 	return students, total, nil
@@ -85,53 +71,40 @@ func (r *studentRepo) BulkDelete(ctx context.Context, ids []int) (int64, error) 
 		return 0, nil
 	}
 
-	// Expand the slice into positional placeholders: WHERE id IN (?, ?, ...)
+	// Expand slice into dynamic IN placeholders: WHERE id IN (?, ?, ...)
 	query, args, err := sqlx.In("DELETE FROM students WHERE id IN (?)", ids)
 	if err != nil {
-		return 0, fmt.Errorf("studentRepo.BatchDelete query build: %w", err)
+		return 0, fmt.Errorf("studentRepo.BulkDelete query build: %w", err)
 	}
 
-	// Rebind query to match MariaDB driver syntax
+	// Rebind query to driver syntax (?)
 	query = r.db.Rebind(query)
 
-	// Execute the db operation
 	result, err := r.db.ExecContext(ctx, query, args...)
 	if err != nil {
-		return 0, fmt.Errorf("studentRepo.BatchDelete execute: %w", err)
+		return 0, fmt.Errorf("studentRepo.BulkDelete execute: %w", err)
 	}
 
-	// Return total number of deleted rows
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return 0, fmt.Errorf("studentRepo.BatchDelete rows affected: %w", err)
+		return 0, fmt.Errorf("studentRepo.BulkDelete rows affected: %w", err)
 	}
 
 	return rowsAffected, nil
 }
 
 // BulkUpdate receives a slice of batch inputs and updates each student record in a single transaction.
-func (r *studentRepo) BulkUpdate(ctx context.Context, updates []domain.BulkUpdateStudentItem) ([]domain.Student, int, error) {
-	if len(updates) == 0 {
-		return []domain.Student{}, 0, nil
+func (r *studentRepo) BulkUpdate(ctx context.Context, students []domain.Student) (int64, error) {
+	if len(students) == 0 {
+		return 0, nil
 	}
 
-	// Start the database transaction
+	// Start a transaction with eventual rollbacks in case of errors
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
-		return nil, 0, fmt.Errorf("studentRepo.BatchUpdate begin tx: %w", err)
+		return 0, fmt.Errorf("studentRepo.BulkUpdate begin tx: %w", err)
 	}
-
-	// Ensure rollback should an error occur
 	defer tx.Rollback()
-
-	// Instantiate a caser for data normalization
-	caser := cases.Title(language.English)
-
-	// Generate timestamp
-	now := time.Now().UTC()
-
-	// Make a slice to hold updated students
-	updatedStudents := make([]domain.Student, 0, len(updates))
 
 	query := `
 		UPDATE students SET
@@ -139,93 +112,64 @@ func (r *studentRepo) BulkUpdate(ctx context.Context, updates []domain.BulkUpdat
 			last_name = :last_name,
 			email = :email,
 			class_id = :class_id,
+			is_active = :is_active,
 			updated_at = :updated_at
 		WHERE id = :id
 	`
 
-	total := 0
+	var totalRowsAffected int64
 
-	for _, u := range updates {
-		// Fetch current record inside the active transaction
-		var student domain.Student
-		fetchQuery := "SELECT id, first_name, last_name, email, class_id, created_at, updated_at FROM students WHERE id = ?"
-		if err := tx.GetContext(ctx, &student, fetchQuery, u.ID); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil, 0, fmt.Errorf("studentRepo.BatchUpdate student ID %d not found: %w", u.ID, sql.ErrNoRows)
-			}
-			return nil, 0, fmt.Errorf("studentRepo.BatchUpdate fetch ID %d: %w", u.ID, err)
-		}
-
-		// Apply non-nil updates (promoted directly from embedded PatchStudentInput)
-		if u.FirstName != nil {
-			student.FirstName = *u.FirstName
-		}
-		if u.LastName != nil {
-			student.LastName = *u.LastName
-		}
-		if u.Email != nil {
-			student.Email = *u.Email
-		}
-		if u.ClassID != nil {
-			student.ClassID = *u.ClassID
-		}
-
-		// Normalize fields and set updated timestamp
-		student.Normalize(caser)
-		student.UpdatedAt = now
-
-		// Execute update query
-		_, err = tx.NamedExecContext(ctx, query, student)
+	// Loop over the slice, saving the value of rows affected outside for future use
+	for i := range students {
+		// Expect students[i] to already be merged, normalized, and stamped by the Service layer
+		res, err := tx.NamedExecContext(ctx, query, students[i])
 		if err != nil {
-			return nil, 0, fmt.Errorf("studentRepo.BatchUpdate execute ID %d: %w", u.ID, err)
+			return 0, fmt.Errorf("studentRepo.BulkUpdate execute at index %d (ID %d): %w", i, students[i].ID, err)
 		}
 
-		updatedStudents = append(updatedStudents, student)
-		total++
+		rows, err := res.RowsAffected()
+		if err != nil {
+			return 0, fmt.Errorf("studentRepo.BulkUpdate rows affected at index %d: %w", i, err)
+		}
+
+		if rows == 0 {
+			return 0, fmt.Errorf("studentRepo.BulkUpdate student ID %d not found: %w", students[i].ID, domain.ErrNotFound)
+		}
+
+		totalRowsAffected += rows
 	}
 
-	// Commit transaction changes
+	// Commit the changes to the database
 	if err := tx.Commit(); err != nil {
-		return nil, 0, fmt.Errorf("studentRepo.BatchUpdate commit: %w", err)
+		return 0, fmt.Errorf("studentRepo.BulkUpdate commit: %w", err)
 	}
 
-	return updatedStudents, total, nil
+	return totalRowsAffected, nil
 }
 
 // BulkUpdateClass reassigns a slice of student IDs to a new class_id in a single execution.
-func (r *studentRepo) BulkUpdateClass(ctx context.Context, ids []int, classID int) (int64, error) {
+func (r *studentRepo) BulkUpdateClass(ctx context.Context, ids []int, classID int, updatedAt time.Time) (int64, error) {
 	if len(ids) == 0 {
 		return 0, nil
 	}
 
-	// Verify target class exists
-	var exists bool
-	checkQuery := "SELECT EXISTS(SELECT 1 FROM classes WHERE id = ?)"
-	if err := r.db.GetContext(ctx, &exists, checkQuery, classID); err != nil {
-		return 0, fmt.Errorf("studentRepo.BulkUpdateClass check class: %w", err)
-	}
-	if !exists {
-		return 0, domain.ErrNotFound
-	}
-
-	// Perform bulk update
 	rawQuery := "UPDATE students SET class_id = ?, updated_at = ? WHERE id IN (?)"
-	now := time.Now().UTC()
 
-	query, args, err := sqlx.In(rawQuery, classID, now, ids)
+	// Expand slice into dynamic IN placeholders: WHERE id IN (?, ?, ...)
+	query, args, err := sqlx.In(rawQuery, classID, updatedAt, ids)
 	if err != nil {
 		return 0, fmt.Errorf("studentRepo.BulkUpdateClass query build: %w", err)
 	}
 
+	// Rebind query to match driver syntax (?)
 	query = r.db.Rebind(query)
 
-	// Execute the db query
+	// Execute the db operation
 	result, err := r.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return 0, fmt.Errorf("studentRepo.BulkUpdateClass execute: %w", err)
 	}
 
-	// Obtain the number of updated rows
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return 0, fmt.Errorf("studentRepo.BulkUpdateClass rows affected: %w", err)
@@ -236,68 +180,49 @@ func (r *studentRepo) BulkUpdateClass(ctx context.Context, ids []int, classID in
 
 func (r *studentRepo) Create(ctx context.Context, s *domain.Student) error {
 	query := `
-		INSERT INTO students (first_name, last_name, email, class_id, created_at, updated_at)
-		VALUES (:first_name, :last_name, :email, :class_id, :created_at, :updated_at)
+		INSERT INTO students (first_name, last_name, email, class_id, is_active, created_at, updated_at)
+		VALUES (:first_name, :last_name, :email, :class_id, :is_active, :created_at, :updated_at)
 	`
 
-	// Initiate a caser to normalize capitalization
-	caser := cases.Title(language.English)
-
-	// Normalize fields explicitly (Trim + Case handling)
-	s.Normalize(caser)
-
-	// Add timestamp
-	now := time.Now().UTC()
-	s.CreatedAt = now
-	s.UpdatedAt = now
-
-	// Execute the db operation with `NamedExecContext` to match the named placeholders
+	// Expect s to already be normalized and stamped by the Service layer
 	result, err := r.db.NamedExecContext(ctx, query, s)
 	if err != nil {
 		return fmt.Errorf("studentRepo.Create execute: %w", err)
 	}
 
-	// Grab newly inserted entry's id to be able to send a response
 	id, err := result.LastInsertId()
 	if err != nil {
 		return fmt.Errorf("studentRepo.Create last insert id: %w", err)
 	}
 
-	// Assign the received id to the entry in order to show in the response
 	s.ID = int(id)
-
 	return nil
 }
 
 func (r *studentRepo) Delete(ctx context.Context, id int) error {
 	query := "DELETE FROM students WHERE id = ?"
 
-	// Execute the db operation
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("studentRepo.Delete execute: %w", err)
 	}
 
-	// Check if any row was actually deleted
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return fmt.Errorf("studentRepo.Delete rows affected: %w", err)
 	}
 
-	// If 0 rows were affected, the ID did not exist in the db
 	if rowsAffected == 0 {
-		return sql.ErrNoRows
+		return fmt.Errorf("studentRepo.Delete: %w", domain.ErrNotFound)
 	}
 
 	return nil
 }
 
 func (r *studentRepo) GetByID(ctx context.Context, id int) (*domain.PopulatedStudent, error) {
-	var s domain.PopulatedStudent
-
 	query := `
 		SELECT
-			s.id, s.first_name, s.last_name, s.email, s.created_at, s.updated_at,
+			s.id, s.first_name, s.last_name, s.email, s.is_active, s.created_at, s.updated_at,
 			c.id AS "class.id",
 			c.grade AS "class.grade",
 			c.letter AS "class.letter"
@@ -306,102 +231,74 @@ func (r *studentRepo) GetByID(ctx context.Context, id int) (*domain.PopulatedStu
 		WHERE s.id = ?
 	`
 
-	// Execute query and assign it to the variable `s` if successful
-	err := r.db.GetContext(ctx, &s, query, id)
-	if err != nil {
-		// If the id is not found
+	var student domain.PopulatedStudent
+	if err := r.db.GetContext(ctx, &student, query, id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+			return nil, fmt.Errorf("studentRepo.GetByID: %w", domain.ErrNotFound)
 		}
-
-		// Other errors
 		return nil, fmt.Errorf("studentRepo.GetByID execute: %w", err)
 	}
 
-	return &s, nil
+	return &student, nil
 }
 
 // List takes a context, limit and offset and returns a slice, a total and errors
 func (r *studentRepo) List(ctx context.Context, limit int, offset int) ([]domain.PopulatedStudent, int, error) {
-	// Make an empty slice to hold students
-	students := make([]domain.PopulatedStudent, 0)
-
-	// Get the total count across the entire table
-	var totalItems int
 	countQuery := "SELECT COUNT(*) FROM students"
-	if err := r.db.GetContext(ctx, &totalItems, countQuery); err != nil {
-		return nil, 0, fmt.Errorf("studentRepo.List count: %w", err)
+	var total int
+	if err := r.db.GetContext(ctx, &total, countQuery); err != nil {
+		return nil, 0, fmt.Errorf("studentRepo.List count execute: %w", err)
 	}
 
-	// Get populated columns from students joined with classes, ordered by student ID
+	if total == 0 {
+		return []domain.PopulatedStudent{}, 0, nil
+	}
+
 	query := `
-		SELECT
-			s.id, s.first_name, s.last_name, s.email, s.created_at, s.updated_at,
-			c.id AS "class.id",
-			c.grade AS "class.grade",
-			c.letter AS "class.letter"
-		FROM students s
-		INNER JOIN classes c ON s.class_id = c.id
-		ORDER BY s.id LIMIT ? OFFSET ?
-	`
+			SELECT
+				s.id, s.first_name, s.last_name, s.email, s.is_active, s.created_at, s.updated_at,
+				c.id AS "class.id",
+				c.grade AS "class.grade",
+				c.letter AS "class.letter"
+			FROM students s
+			INNER JOIN classes c ON s.class_id = c.id
+			ORDER BY s.id ASC
+			LIMIT ? OFFSET ?
+		`
 
-	// Execute the db operation
-	err := r.db.SelectContext(ctx, &students, query, limit, offset)
-	if err != nil {
-		return nil, 0, fmt.Errorf("studentRepo.List fetch: %w", err)
+	students := make([]domain.PopulatedStudent, 0, limit)
+	if err := r.db.SelectContext(ctx, &students, query, limit, offset); err != nil {
+		return nil, 0, fmt.Errorf("studentRepo.List select execute: %w", err)
 	}
 
-	// Return the results to be used
-	return students, totalItems, nil
+	return students, total, nil
 }
 
-func (r *studentRepo) Update(ctx context.Context, id int, input domain.PatchStudentInput) (*domain.Student, error) {
-	// Fetch current record from DB using a flat query for mutation state
-	var student domain.Student
-	fetchQuery := "SELECT id, first_name, last_name, email, class_id, created_at, updated_at FROM students WHERE id = ?"
-	if err := r.db.GetContext(ctx, &student, fetchQuery, id); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, sql.ErrNoRows
-		}
-		return nil, fmt.Errorf("studentRepo.Update fetch: %w", err)
-	}
-
-	// Overwrite only fields provided in the PATCH payload
-	if input.FirstName != nil {
-		student.FirstName = *input.FirstName
-	}
-	if input.LastName != nil {
-		student.LastName = *input.LastName
-	}
-	if input.Email != nil {
-		student.Email = *input.Email
-	}
-	if input.ClassID != nil {
-		student.ClassID = *input.ClassID
-	}
-
-	// Normalize the entity as a whole
-	caser := cases.Title(language.English)
-	student.Normalize(caser)
-
-	// Apply timestamp
-	student.UpdatedAt = time.Now().UTC()
-
+func (r *studentRepo) Update(ctx context.Context, s *domain.Student) error {
 	query := `
 		UPDATE students SET
 			first_name = :first_name,
 			last_name = :last_name,
 			email = :email,
 			class_id = :class_id,
+			is_active = :is_active,
 			updated_at = :updated_at
 		WHERE id = :id
 	`
 
-	// Execute static SQL query using sqlx named placeholders
-	_, err := r.db.NamedExecContext(ctx, query, student)
+	result, err := r.db.NamedExecContext(ctx, query, s)
 	if err != nil {
-		return nil, fmt.Errorf("studentRepo.Update execute: %w", err)
+		return fmt.Errorf("studentRepo.Update execute: %w", err)
 	}
 
-	return &student, nil
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("studentRepo.Update rows affected: %w", err)
+	}
+
+	if rows == 0 {
+		return fmt.Errorf("studentRepo.Update: %w", domain.ErrNotFound)
+	}
+
+	return nil
 }
