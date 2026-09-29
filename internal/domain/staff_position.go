@@ -2,7 +2,10 @@ package domain
 
 import (
 	"context"
+	"strings"
 	"time"
+
+	"golang.org/x/text/cases"
 )
 
 type StaffPositionRepository interface {
@@ -53,4 +56,10 @@ type PopulatedStaffPosition struct {
 	Description string            `json:"description"`
 	IsActive    bool              `json:"is_active"`
 	CreatedAt   time.Time         `json:"created_at"`
+}
+
+// Normalize applies string normalization to user input fields
+func (d StaffPosition) Normalize(caser cases.Caser) {
+	d.Title = caser.String(strings.ToLower(strings.TrimSpace(d.Title)))
+	d.Description = caser.String(strings.ToLower(strings.TrimSpace(d.Description)))
 }

@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/ednanf/school-api/internal/domain"
 	"golang.org/x/text/cases"
@@ -21,6 +23,18 @@ func NewStaffPositionService(repo domain.StaffPositionRepository) domain.StaffPo
 }
 
 func (s *staffPositionService) Create(ctx context.Context, staffPosition *domain.StaffPosition) error {
+	now := time.Now().UTC()
+
+	// Normalize text fields and assign timestamps
+	staffPosition.Normalize(s.caser)
+	staffPosition.CreatedAt = now
+	staffPosition.UpdatedAt = now
+
+	// Delegate persistence to repo with layer error wrapping
+	if err := s.repo.Create(ctx, staffPosition); err != nil {
+		return fmt.Errorf("staffPositionService.Create:  %w", err)
+	}
+
 	return nil
 }
 

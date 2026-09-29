@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ednanf/school-api/internal/domain"
 	"github.com/jmoiron/sqlx"
@@ -18,6 +19,23 @@ func NewStaffPositionRepository(db *sqlx.DB) domain.StaffPositionRepository {
 }
 
 func (r *staffPositionRepo) Create(ctx context.Context, s *domain.StaffPosition) error {
+	query := `
+		INSERT INTO staff_positions (department_id, title, description, is_active, created_at, updated_at)
+		VALUES (:department_id, :title, :description, :is_active, :created_at, :updated_at)
+	`
+
+	// s is already normalized and timestamped in the service layer
+	result, err := r.db.NamedExecContext(ctx, query, s)
+	if err != nil {
+		return fmt.Errorf("staffPositionRepo.Create execute: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("staffPositionRepo.Create last insert id: %w", err)
+	}
+
+	s.ID = int(id)
 	return nil
 }
 

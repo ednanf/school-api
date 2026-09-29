@@ -151,7 +151,7 @@ func (s *studentService) BulkUpdateClass(ctx context.Context, ids []int, classID
 func (s *studentService) Create(ctx context.Context, student *domain.Student) error {
 	now := time.Now().UTC()
 
-	// Business logic: Normalize text fields and assign timestamps
+	// Normalize text fields and assign timestamps
 	student.Normalize(s.caser)
 	student.CreatedAt = now
 	student.UpdatedAt = now

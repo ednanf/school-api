@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/ednanf/school-api/internal/domain"
@@ -30,7 +31,30 @@ func (h *StaffPositionHandler) StaffPositionRoutes() chi.Router {
 }
 
 func (h *StaffPositionHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "create hit", nil)
+	var position domain.StaffPosition
+
+	if err := json.NewDecoder(r.Body).Decode(&position); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Validate struct rules
+	if err := h.validate.StructCtx(r.Context(), &position); err != nil {
+		if validationsErrs, ok := err.(validator.ValidationErrors); ok {
+			sendError(w, http.StatusUnprocessableEntity, "Validations failed", formatValidationErrors(validationsErrs))
+			return
+		}
+		sendError(w, http.StatusBadRequest, "Validation failed", nil)
+		return
+	}
+
+	// Delegate normalization, timing and persistence to service layer
+	if err := h.service.Create(r.Context(), &position); err != nil {
+		sendError(w, http.StatusInternalServerError, "Failed to create position entry", nil)
+		return
+	}
+
+	sendSuccess(w, http.StatusCreated, "Position created successfully", position)
 }
 
 func (h *StaffPositionHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
