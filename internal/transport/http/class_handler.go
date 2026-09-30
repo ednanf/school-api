@@ -1,7 +1,6 @@
 package http
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -101,14 +100,23 @@ func (h *ClassHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Search for class
-	class, err := h.service.GetByID(r.Context(), id)
-	if err != nil {
-		sendError(w, http.StatusInternalServerError, "Database error", nil)
+	if id <= 0 {
+		sendError(w, http.StatusBadRequest, "Invalid class ID", nil)
 		return
 	}
 
-	// If the student does not exist
+	// Search for class
+	class, err := h.service.GetByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			sendError(w, http.StatusNotFound, "Class not found", nil)
+			return
+		}
+		sendError(w, http.StatusInternalServerError, "Failed to retrieve class", nil)
+		return
+	}
+
+	// If the class does not exist
 	if class == nil {
 		sendError(w, http.StatusNotFound, "Class not found", nil)
 		return
@@ -155,6 +163,11 @@ func (h *ClassHandler) HandleListStudentsByClassId(w http.ResponseWriter, r *htt
 		return
 	}
 
+	if classID <= 0 {
+		sendError(w, http.StatusBadRequest, "Invalid class ID", nil)
+		return
+	}
+
 	queryParams := r.URL.Query()
 	reqPage, _ := strconv.Atoi(queryParams.Get("page"))
 	reqLimit, _ := strconv.Atoi(queryParams.Get("limit"))
@@ -182,22 +195,24 @@ func (h *ClassHandler) HandleListStudentsByClassId(w http.ResponseWriter, r *htt
 }
 
 func (h *ClassHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
-	// Extract and convert the id to int
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid class ID", nil)
 		return
 	}
 
-	// Decode the request's body into the pointer-based PATCH DTO
 	var input domain.PatchClassInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
 		return
 	}
 
-	// Validate optional field constraints (using omitempty rules)
+	// Ensure at least one field was passed to update
+	if !input.HasUpdates() {
+		sendError(w, http.StatusBadRequest, "At least one field must be provided for update", nil)
+		return
+	}
+
 	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
@@ -207,10 +222,9 @@ func (h *ClassHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Perform the update in the db
 	updatedClass, err := h.service.Update(r.Context(), id, input)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, domain.ErrNotFound) {
 			sendError(w, http.StatusNotFound, "Class not found", nil)
 			return
 		}
@@ -218,5 +232,5 @@ func (h *ClassHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendSuccess(w, http.StatusOK, "", updatedClass)
+	sendSuccess(w, http.StatusOK, "Class updated successfully", updatedClass)
 }

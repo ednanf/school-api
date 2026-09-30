@@ -21,7 +21,7 @@ type ClassService interface {
 	Delete(ctx context.Context, id int) error
 	GetByID(ctx context.Context, id int) (*Class, error)
 	List(ctx context.Context, page, limit int) (items []Class, totalItems, pageNum, limitNum int, err error)
-	ListStudentsByClassId(ctx context.Context, classID int, page int, limit int) (items []Student, totalItmes, pageNum, limitNum int, err error)
+	ListStudentsByClassId(ctx context.Context, classID int, page int, limit int) (items []Student, totalItems, pageNum, limitNum int, err error)
 	Update(ctx context.Context, id int, input PatchClassInput) (*Class, error)
 }
 
@@ -41,6 +41,11 @@ type PatchClassInput struct {
 	Grade    *int    `json:"grade" db:"grade" validate:"omitempty,min=1,max=9"`
 	Letter   *string `json:"letter" db:"letter" validate:"omitempty,oneof=A B C D"`
 	IsActive *bool   `json:"is_active" db:"is_active" validate:"omitempty"`
+}
+
+// HasUpdates checks if at least one field is provided in the patch payload
+func (p PatchClassInput) HasUpdates() bool {
+	return p.Grade != nil || p.Letter != nil || p.IsActive != nil
 }
 
 func (s *Class) Normalize() {
