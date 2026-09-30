@@ -251,20 +251,20 @@ func (r *studentRepo) List(ctx context.Context, limit, offset int) ([]domain.Pop
 	}
 
 	if total == 0 {
-		return []domain.PopulatedStudent{}, 0, nil
+		return []domain.PopulatedStudent{}, 0, nil // return an empty slice
 	}
 
 	query := `
-			SELECT
-				s.id, s.first_name, s.last_name, s.email, s.is_active, s.created_at, s.updated_at,
-				c.id AS "class.id",
-				c.grade AS "class.grade",
-				c.letter AS "class.letter"
-			FROM students s
-			INNER JOIN classes c ON s.class_id = c.id
-			ORDER BY s.id ASC
-			LIMIT ? OFFSET ?
-		`
+		SELECT
+			s.id, s.first_name, s.last_name, s.email, s.is_active, s.created_at, s.updated_at,
+			c.id AS "class.id",
+			c.grade AS "class.grade",
+			c.letter AS "class.letter"
+		FROM students s
+		INNER JOIN classes c ON s.class_id = c.id
+		ORDER BY s.id ASC
+		LIMIT ? OFFSET ?
+	`
 
 	students := make([]domain.PopulatedStudent, 0, limit)
 	if err := r.db.SelectContext(ctx, &students, query, limit, offset); err != nil {

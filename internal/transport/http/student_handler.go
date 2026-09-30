@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -292,12 +291,11 @@ func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	// Delegate paginated fetch and total count calculation to service layer
 	students, totalItems, err := h.service.List(r.Context(), limit, offset)
 	if err != nil {
-		fmt.Println(err)
 		sendError(w, http.StatusInternalServerError, "Failed to fetch student list", nil)
 		return
 	}
 
-	// Calculate total pages using integer arithmetic
+	// Calculate total pages
 	totalPages := 0
 	if totalItems > 0 {
 		totalPages = (totalItems + limit - 1) / limit
