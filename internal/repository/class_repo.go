@@ -154,7 +154,7 @@ func (r *classRepo) Update(ctx context.Context, c *domain.Class) error {
 	}
 
 	if rowsAffected == 0 {
-		return domain.ErrNotFound
+		return fmt.Errorf("classRepo.Update: %w", domain.ErrNotFound)
 	}
 
 	return nil

@@ -1,7 +1,6 @@
 package http
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"log"
@@ -94,7 +93,7 @@ func (h *StaffPositionHandler) HandleGetByID(w http.ResponseWriter, r *http.Requ
 	// Delegate fetching to the service layer
 	position, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, domain.ErrNotFound) {
 			sendError(w, http.StatusNotFound, "Position not found", nil)
 			return
 		}
@@ -186,7 +185,6 @@ func (h *StaffPositionHandler) HandleUpdate(w http.ResponseWriter, r *http.Reque
 			sendError(w, http.StatusNotFound, "Position not found", nil)
 			return
 		}
-		log.Printf("[DEBUG] %s", err)
 		sendError(w, http.StatusInternalServerError, "Failed to update position", nil)
 		return
 	}

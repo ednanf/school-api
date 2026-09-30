@@ -76,7 +76,7 @@ func (r *staffPositionRepo) GetByID(ctx context.Context, id int) (*domain.Popula
 	var position domain.PopulatedStaffPosition
 	if err := r.db.GetContext(ctx, &position, query, id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("staffPositionRepo.GetByID: %w", err)
+			return nil, fmt.Errorf("staffPositionRepo.GetByID: %w", domain.ErrNotFound)
 		}
 		return nil, fmt.Errorf("staffPositionRepo.GetByID execute: %w", err)
 	}
