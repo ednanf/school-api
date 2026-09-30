@@ -77,12 +77,12 @@ func (h *TeacherHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	if err := h.service.Delete(r.Context(), id); err != nil {
 		// 404 when teacher was not found
 		if errors.Is(err, domain.ErrNotFound) {
-			sendError(w, http.StatusNotFound, "Student not found", nil)
+			sendError(w, http.StatusNotFound, "Teacher not found", nil)
 			return
 		}
 
 		// 500 for db connection or syntax errors
-		sendError(w, http.StatusInternalServerError, "Failed to delete student", nil)
+		sendError(w, http.StatusInternalServerError, "Failed to delete teacher", nil)
 		return
 	}
 
@@ -102,13 +102,11 @@ func (h *TeacherHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	// Search for the teacher
 	teacher, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			sendError(w, http.StatusNotFound, "Teacher not found", nil)
+			return
+		}
 		sendError(w, http.StatusInternalServerError, "Database error", nil)
-		return
-	}
-
-	// If the teacher does not exist
-	if teacher == nil {
-		sendError(w, http.StatusNotFound, "Teacher not found", nil)
 		return
 	}
 

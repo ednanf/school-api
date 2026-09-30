@@ -1,7 +1,6 @@
 package http
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -77,7 +76,7 @@ func (h *TeacherAssignmentHandler) HandleDelete(w http.ResponseWriter, r *http.R
 	// Execute the db operation
 	if err = h.service.Delete(r.Context(), id); err != nil {
 		// 404 when not found
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, domain.ErrNotFound) {
 			sendError(w, http.StatusNotFound, "Assignment not found", nil)
 			return
 		}
@@ -171,7 +170,7 @@ func (h *TeacherAssignmentHandler) HandleUpdate(w http.ResponseWriter, r *http.R
 	// Perform the update
 	updatedAssignment, err := h.service.Update(r.Context(), id, input)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, domain.ErrNotFound) {
 			sendError(w, http.StatusNotFound, "Assignment not found", nil)
 			return
 		}
