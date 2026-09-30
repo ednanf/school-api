@@ -85,7 +85,34 @@ func (r *staffPositionRepo) GetByID(ctx context.Context, id int) (*domain.Popula
 }
 
 func (r *staffPositionRepo) List(ctx context.Context, limit, offset int) (positions []domain.PopulatedStaffPosition, totalItems int, err error) {
-	return nil, 0, nil
+	countQuery := "SELECT COUNT(*) FROM staff_positions"
+	var total int
+	if err := r.db.GetContext(ctx, &total, countQuery); err != nil {
+		return nil, 0, fmt.Errorf("staffPositionRepo.List count execute: %w", err)
+	}
+
+	if total == 0 {
+		return []domain.PopulatedStaffPosition{}, 0, nil // return an empty slice
+	}
+
+	query := `
+		SELECT
+			s.id, s.title, s.description, s.is_active, s.created_at, s.updated_at,
+			d.id AS "department.id",
+			d.name AS "department.name",
+			d.description AS "department.description"
+		FROM staff_positions s
+		INNER JOIN departments d ON s.department_id = d.id
+		ORDER BY s.id ASC
+		LIMIT ? OFFSET ?
+	`
+
+	positions = make([]domain.PopulatedStaffPosition, 0, limit)
+	if err := r.db.SelectContext(ctx, &positions, query, limit, offset); err != nil {
+		return nil, 0, fmt.Errorf("staffPositionRepo.List select execute: %w", err)
+	}
+
+	return positions, total, nil
 }
 
 func (r *staffPositionRepo) Update(ctx context.Context, id int) error {

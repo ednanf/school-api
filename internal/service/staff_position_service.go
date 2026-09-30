@@ -57,7 +57,24 @@ func (s *staffPositionService) GetByID(ctx context.Context, id int) (*domain.Pop
 }
 
 func (s *staffPositionService) List(ctx context.Context, limit, offset int) (positions []domain.PopulatedStaffPosition, totalItems int, err error) {
-	return nil, 0, nil
+	// Enforce defensive pagination boundaries
+	if limit <= 0 {
+		limit = 10
+	} else if limit > 100 {
+		limit = 100
+	}
+
+	if offset < 0 {
+		offset = 0
+	}
+
+	// Delegate fetching and total count to repository layer
+	positions, totalItems, err = s.repo.List(ctx, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("staffPositions.List: %w", err)
+	}
+
+	return positions, totalItems, nil
 }
 
 func (s *staffPositionService) Update(ctx context.Context, id int) (*domain.StaffPosition, error) {
