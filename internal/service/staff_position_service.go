@@ -77,6 +77,46 @@ func (s *staffPositionService) List(ctx context.Context, limit, offset int) (pos
 	return positions, totalItems, nil
 }
 
-func (s *staffPositionService) Update(ctx context.Context, id int) (*domain.StaffPosition, error) {
-	return nil, nil
+func (s *staffPositionService) Update(ctx context.Context, id int, input domain.PatchStaffPosition) (*domain.StaffPosition, error) {
+	// Fetch current record to build full entity state
+	existing, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("staffPositionService.Update fetch: %w", err)
+	}
+
+	// Map the existing record to domain.StaffPosition
+	position := domain.StaffPosition{
+		ID:           existing.ID,
+		DepartmentID: existing.Department.ID,
+		Title:        existing.Title,
+		Description:  existing.Description,
+		IsActive:     existing.IsActive,
+		CreatedAt:    existing.CreatedAt,
+		UpdatedAt:    existing.UpdatedAt,
+	}
+
+	// Apply non-nil patch updates
+	if input.DepartmentID != nil {
+		position.DepartmentID = *input.DepartmentID
+	}
+	if input.Title != nil {
+		position.Title = *input.Title
+	}
+	if input.Description != nil {
+		position.Description = *input.Description
+	}
+	if input.IsActive != nil {
+		position.IsActive = *input.IsActive
+	}
+
+	// Normalize string fields and update the timestamp
+	position.Normalize(s.caser)
+	position.UpdatedAt = time.Now().UTC()
+
+	// Persist merged entity via repository
+	if err := s.repo.Update(ctx, &position); err != nil {
+		return nil, fmt.Errorf("staffPositionService.Update: %w", err)
+	}
+
+	return &position, nil
 }

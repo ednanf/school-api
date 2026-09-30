@@ -13,7 +13,7 @@ type StaffPositionRepository interface {
 	Delete(ctx context.Context, id int) error
 	GetByID(ctx context.Context, id int) (*PopulatedStaffPosition, error)
 	List(ctx context.Context, limit, offset int) (positions []PopulatedStaffPosition, totalItems int, err error)
-	Update(ctx context.Context, id int) error
+	Update(ctx context.Context, s *StaffPosition) error
 }
 
 type StaffPositionService interface {
@@ -21,7 +21,7 @@ type StaffPositionService interface {
 	Delete(ctx context.Context, id int) error
 	GetByID(ctx context.Context, id int) (*PopulatedStaffPosition, error)
 	List(ctx context.Context, limit, offset int) (positions []PopulatedStaffPosition, totalItems int, err error)
-	Update(ctx context.Context, id int) (*StaffPosition, error)
+	Update(ctx context.Context, id int, input PatchStaffPosition) (*StaffPosition, error)
 }
 
 // StaffPosition defines the shape of StaffPosition struct in the database
@@ -36,10 +36,10 @@ type StaffPosition struct {
 }
 
 type PatchStaffPosition struct {
-	DepartmentID int    `json:"department_id" db:"department_id" validate:"omitempty,gt=0"`
-	Title        string `json:"title" db:"title" validate:"omitempty,min=2,max=100"`
-	Description  string `json:"description" db:"description" validate:"omitempty,min=2,max=300"`
-	IsActive     bool   `json:"is_active" db:"is_active" validate:"omitempty"`
+	DepartmentID *int    `json:"department_id" db:"department_id" validate:"omitempty,gt=0"`
+	Title        *string `json:"title" db:"title" validate:"omitempty,min=2,max=100"`
+	Description  *string `json:"description" db:"description" validate:"omitempty,min=2,max=300"`
+	IsActive     *bool   `json:"is_active" db:"is_active" validate:"omitempty"`
 }
 
 // DepartmentSummary represents embedded department data inside a staff position

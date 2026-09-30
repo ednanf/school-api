@@ -115,6 +115,30 @@ func (r *staffPositionRepo) List(ctx context.Context, limit, offset int) (positi
 	return positions, total, nil
 }
 
-func (r *staffPositionRepo) Update(ctx context.Context, id int) error {
+func (r *staffPositionRepo) Update(ctx context.Context, s *domain.StaffPosition) error {
+	query := `
+		UPDATE staff_positions SET
+			department_id = :department_id,
+			title = :title,
+			description = :description,
+			is_active = :is_active,
+			updated_at = :updated_at
+		WHERE id = :id
+	`
+
+	result, err := r.db.NamedExecContext(ctx, query, s)
+	if err != nil {
+		return fmt.Errorf("staffPositionRepo.Update execute: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("staffPositionRepo.Update rows affected: %w", err)
+	}
+
+	if rows == 0 {
+		return fmt.Errorf("staffPositionRepo.Update: %w", domain.ErrNotFound)
+	}
+
 	return nil
 }
