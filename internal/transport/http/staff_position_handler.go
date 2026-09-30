@@ -2,7 +2,9 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/ednanf/school-api/internal/domain"
 	"github.com/go-chi/chi/v5"
@@ -58,11 +60,46 @@ func (h *StaffPositionHandler) HandleCreate(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *StaffPositionHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "delete hit", nil)
+	// Extract and convert url param
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid position ID", nil)
+		return
+	}
+
+	// Delegate deletion to service layer
+	if err := h.service.Delete(r.Context(), id); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			sendError(w, http.StatusNotFound, "Position not found", nil)
+			return
+		}
+
+		sendError(w, http.StatusInternalServerError, "Failed to delete position", nil)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *StaffPositionHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "get by id hit", nil)
+	// Extract and convert the url param
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid position ID", nil)
+		return
+	}
+
+	// Delegate fetching to the service layer
+	position, err := h.service.GetByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			sendError(w, http.StatusNotFound, "Position not found", nil)
+		}
+
+		sendError(w, http.StatusInternalServerError, "Failed to fetch position", nil)
+		return
+	}
+	sendSuccess(w, http.StatusOK, "Position retrieved successfully", position)
 }
 
 func (h *StaffPositionHandler) HandleList(w http.ResponseWriter, r *http.Request) {

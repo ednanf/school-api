@@ -39,11 +39,21 @@ func (s *staffPositionService) Create(ctx context.Context, staffPosition *domain
 }
 
 func (s *staffPositionService) Delete(ctx context.Context, id int) error {
+	// Delegate persistence to repo layer with error wrapping
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return fmt.Errorf("staffPositionService.Delete: %w", err)
+	}
+
 	return nil
 }
 
 func (s *staffPositionService) GetByID(ctx context.Context, id int) (*domain.PopulatedStaffPosition, error) {
-	return nil, nil
+	position, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("staffPositionService.GetByID: %w", err)
+	}
+
+	return position, nil
 }
 
 func (s *staffPositionService) List(ctx context.Context, limit, offset int) (positions []domain.PopulatedStaffPosition, totalItems int, err error) {

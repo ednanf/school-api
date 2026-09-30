@@ -51,15 +51,17 @@ type DepartmentSummary struct {
 
 // PopulatedStaffPosition is used for GET/List API responses
 type PopulatedStaffPosition struct {
-	Department  DepartmentSummary `json:"department_id"`
+	ID          int               `json:"id" db:"id"`
+	Department  DepartmentSummary `json:"department" db:"department"`
 	Title       string            `json:"title" db:"title"`
-	Description string            `json:"description"`
-	IsActive    bool              `json:"is_active"`
-	CreatedAt   time.Time         `json:"created_at"`
+	Description string            `json:"description" db:"description"`
+	IsActive    bool              `json:"is_active" db:"is_active"`
+	CreatedAt   time.Time         `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time         `json:"updated_at" db:"updated_at"`
 }
 
 // Normalize applies string normalization to user input fields
-func (d StaffPosition) Normalize(caser cases.Caser) {
-	d.Title = caser.String(strings.ToLower(strings.TrimSpace(d.Title)))
-	d.Description = caser.String(strings.ToLower(strings.TrimSpace(d.Description)))
+func (s StaffPosition) Normalize(caser cases.Caser) {
+	s.Title = caser.String(strings.ToLower(strings.TrimSpace(s.Title)))
+	s.Description = caser.String(strings.ToLower(strings.TrimSpace(s.Description)))
 }

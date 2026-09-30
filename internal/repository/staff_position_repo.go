@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/ednanf/school-api/internal/domain"
@@ -40,11 +42,46 @@ func (r *staffPositionRepo) Create(ctx context.Context, s *domain.StaffPosition)
 }
 
 func (r *staffPositionRepo) Delete(ctx context.Context, id int) error {
+	query := "DELETE FROM staff_positions WHERE id = ?"
+
+	result, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("staffPositionRepo.Delete execute: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("staffPositionRepo.Delete rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("staffPositionRepo.Delete: %w", domain.ErrNotFound)
+	}
+
 	return nil
 }
 
 func (r *staffPositionRepo) GetByID(ctx context.Context, id int) (*domain.PopulatedStaffPosition, error) {
-	return nil, nil
+	query := `
+		SELECT
+			s.id, s.title, s.description, s.is_active, s.created_at, s.updated_at,
+			d.id AS "department.id",
+			d.name AS "department.name",
+			d.description AS "department.description"
+		FROM staff_positions s
+		INNER JOIN departments d ON s.department_id = d.id
+		WHERE s.id = ?
+	`
+
+	var position domain.PopulatedStaffPosition
+	if err := r.db.GetContext(ctx, &position, query, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("staffPositionRepo.GetByID: %w", err)
+		}
+		return nil, fmt.Errorf("staffPositionRepo.GetByID execute: %w", err)
+	}
+
+	return &position, nil
 }
 
 func (r *staffPositionRepo) List(ctx context.Context, limit, offset int) (positions []domain.PopulatedStaffPosition, totalItems int, err error) {
