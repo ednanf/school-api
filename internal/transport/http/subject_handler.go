@@ -1,7 +1,6 @@
 package http
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -76,7 +75,7 @@ func (h *SubjectHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	// Execute the db operation
 	if err := h.service.Delete(r.Context(), id); err != nil {
 		// 404 when subject is not found
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, domain.ErrNotFound) {
 			sendError(w, http.StatusNotFound, "Subject not found", nil)
 			return
 		}
@@ -89,6 +88,7 @@ func (h *SubjectHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// TODO: Add fix 404 errors not showing
 func (h *SubjectHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the URL param
 	idStr := chi.URLParam(r, "id")
@@ -101,13 +101,11 @@ func (h *SubjectHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	// Search for subject
 	subject, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			sendError(w, http.StatusNotFound, "Subject not found", nil)
+			return
+		}
 		sendError(w, http.StatusInternalServerError, "Database error", nil)
-		return
-	}
-
-	// If the subject does not exist
-	if subject == nil {
-		sendError(w, http.StatusNotFound, "Subject not found", nil)
 		return
 	}
 
