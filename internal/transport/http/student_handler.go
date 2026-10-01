@@ -49,6 +49,8 @@ func (h *StudentHandler) HandleBulkCreate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// TODO: Add HasContent
+
 	// Validate incoming payload constraints
 	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
@@ -86,6 +88,11 @@ func (h *StudentHandler) HandleBulkDelete(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if len(input.IDs) == 0 {
+		sendError(w, http.StatusBadRequest, "At least one ID must be provided to delete", nil)
+		return
+	}
+
 	// Validate incoming payload constraints
 	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
@@ -117,6 +124,11 @@ func (h *StudentHandler) HandleBulkUpdate(w http.ResponseWriter, r *http.Request
 	// Decode HTTP body into DTO
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	if len(input.Students) == 0 {
+		sendError(w, http.StatusBadRequest, "At least one ID must be provided to update", nil)
 		return
 	}
 
@@ -161,6 +173,11 @@ func (h *StudentHandler) HandleBulkUpdateClass(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	if len(input.StudentIDs) == 0 || input.ClassID <= 0 {
+		sendError(w, http.StatusBadRequest, "At least one student ID and a class ID must be provided", nil)
+		return
+	}
+
 	// Validate incoming payload constraints
 	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
@@ -199,6 +216,8 @@ func (h *StudentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: Add HasContent
+
 	// Validate struct rules using validator instance
 	if err := h.validate.StructCtx(r.Context(), &student); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
@@ -221,9 +240,8 @@ func (h *StudentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 
 func (h *StudentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert URL param to integer
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid student ID", nil)
 		return
 	}
@@ -245,9 +263,8 @@ func (h *StudentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 
 func (h *StudentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert URL param to integer
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid student ID", nil)
 		return
 	}
@@ -315,9 +332,8 @@ func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 
 func (h *StudentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert student ID from URL path parameter
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid student ID", nil)
 		return
 	}
@@ -326,6 +342,12 @@ func (h *StudentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	var input domain.PatchStudentInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Ensure at least one field was passed to update
+	if !input.HasUpdates() {
+		sendError(w, http.StatusBadRequest, "At least one field must be provided for update", nil)
 		return
 	}
 

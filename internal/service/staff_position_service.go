@@ -77,7 +77,7 @@ func (s *staffPositionService) List(ctx context.Context, limit, offset int) (pos
 	return positions, totalItems, nil
 }
 
-func (s *staffPositionService) Update(ctx context.Context, id int, input domain.PatchStaffPosition) (*domain.StaffPosition, error) {
+func (s *staffPositionService) Update(ctx context.Context, id int, input domain.PatchStaffPositionInput) (*domain.StaffPosition, error) {
 	// Fetch current record to build full entity state
 	existing, err := s.repo.GetByID(ctx, id)
 	if err != nil {

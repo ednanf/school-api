@@ -32,10 +32,17 @@ type TeacherAssignment struct {
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
 
+// TODO: Create HasContent
+
 type PatchTeacherAssignmentInput struct {
 	TeacherID *int `json:"teacher_id" db:"teacher_id" validate:"omitempty,required,gt=0"`
 	ClassID   *int `json:"class_id" db:"class_id" validate:"omitempty,required,gt=0"`
 	SubjectID *int `json:"subject_id" db:"subject_id" validate:"omitempty,required,gt=0"`
+}
+
+// HasUpdates returns true if at least one field is provided in the patch payload
+func (p PatchTeacherAssignmentInput) HasUpdates() bool {
+	return p.ClassID != nil || p.SubjectID != nil || p.TeacherID != nil
 }
 
 type TeacherSummary struct {

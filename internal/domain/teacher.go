@@ -36,6 +36,8 @@ type Teacher struct {
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
 
+// TODO: Create HasContent
+
 // PatchTeacherInput defines the JSON payload for inserting one student
 type PatchTeacherInput struct {
 	// Since the types are primitives, pointers must be used to avoid overwriting nil values. Change "required" to "omitempty" because the values are optional
@@ -43,6 +45,11 @@ type PatchTeacherInput struct {
 	LastName  *string `json:"last_name" validate:"omitempty,min=2,max=100"`
 	Email     *string `json:"email" validate:"omitempty,email"`
 	IsActive  *bool   `json:"is_active" db:"is_active" validate:"omitempty"`
+}
+
+// HasUpdates returns true if at least one field is provided in the patch payload
+func (p PatchTeacherInput) HasUpdates() bool {
+	return p.FirstName != nil || p.LastName != nil || p.Email != nil || p.IsActive != nil
 }
 
 // Normalize applies string normalization to user input fields

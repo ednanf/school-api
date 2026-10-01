@@ -3,7 +3,6 @@ package http
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -41,6 +40,8 @@ func (h *StaffPositionHandler) HandleCreate(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// TODO: Add HasContent
+
 	// Validate struct rules
 	if err := h.validate.StructCtx(r.Context(), &position); err != nil {
 		if validationsErrs, ok := err.(validator.ValidationErrors); ok {
@@ -63,7 +64,7 @@ func (h *StaffPositionHandler) HandleCreate(w http.ResponseWriter, r *http.Reque
 func (h *StaffPositionHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert url param
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-	if err != nil {
+	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid position ID", nil)
 		return
 	}
@@ -85,7 +86,7 @@ func (h *StaffPositionHandler) HandleDelete(w http.ResponseWriter, r *http.Reque
 func (h *StaffPositionHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the url param
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-	if err != nil {
+	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid position ID", nil)
 		return
 	}
@@ -130,7 +131,6 @@ func (h *StaffPositionHandler) HandleList(w http.ResponseWriter, r *http.Request
 	// Delegate paginated fetch and total count to service layer
 	positions, totalItems, err := h.service.List(r.Context(), limit, offset)
 	if err != nil {
-		log.Printf("[DEBUG] %s", err)
 		sendError(w, http.StatusInternalServerError, "Failed to fetch staff positions list", nil)
 		return
 	}
@@ -156,15 +156,21 @@ func (h *StaffPositionHandler) HandleList(w http.ResponseWriter, r *http.Request
 func (h *StaffPositionHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert url param
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-	if err != nil {
+	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid position ID", nil)
 		return
 	}
 
 	// Decode the HTTP body
-	var input domain.PatchStaffPosition
+	var input domain.PatchStaffPositionInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Ensure at least one field was passed to update
+	if !input.HasUpdates() {
+		sendError(w, http.StatusBadRequest, "At least one field must be provided for update", nil)
 		return
 	}
 

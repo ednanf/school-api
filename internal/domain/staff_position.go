@@ -21,7 +21,7 @@ type StaffPositionService interface {
 	Delete(ctx context.Context, id int) error
 	GetByID(ctx context.Context, id int) (*PopulatedStaffPosition, error)
 	List(ctx context.Context, limit, offset int) (positions []PopulatedStaffPosition, totalItems int, err error)
-	Update(ctx context.Context, id int, input PatchStaffPosition) (*StaffPosition, error)
+	Update(ctx context.Context, id int, input PatchStaffPositionInput) (*StaffPosition, error)
 }
 
 // StaffPosition defines the shape of StaffPosition struct in the database
@@ -35,11 +35,18 @@ type StaffPosition struct {
 	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
 }
 
-type PatchStaffPosition struct {
+// TODO: Create HasContent
+
+type PatchStaffPositionInput struct {
 	DepartmentID *int    `json:"department_id" db:"department_id" validate:"omitempty,gt=0"`
 	Title        *string `json:"title" db:"title" validate:"omitempty,min=2,max=100"`
 	Description  *string `json:"description" db:"description" validate:"omitempty,min=2,max=300"`
 	IsActive     *bool   `json:"is_active" db:"is_active" validate:"omitempty"`
+}
+
+// HasUpdates returns true if at least one field is provided in the patch payload
+func (p PatchStaffPositionInput) HasUpdates() bool {
+	return p.Title != nil || p.DepartmentID != nil || p.Description != nil || p.IsActive != nil
 }
 
 // DepartmentSummary represents embedded department data inside a staff position

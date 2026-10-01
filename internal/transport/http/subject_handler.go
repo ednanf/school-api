@@ -45,6 +45,8 @@ func (h *SubjectHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: add HasContent
+
 	if err := h.validate.StructCtx(r.Context(), &subject); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
@@ -65,9 +67,8 @@ func (h *SubjectHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 
 func (h *SubjectHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the URL param to int
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid subject ID", nil)
 		return
 	}
@@ -88,12 +89,10 @@ func (h *SubjectHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// TODO: Add fix 404 errors not showing
 func (h *SubjectHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the URL param
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid subject id", nil)
 		return
 	}
@@ -144,9 +143,8 @@ func (h *SubjectHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 
 func (h *SubjectHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the id to int
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid subject ID", nil)
 		return
 	}
@@ -155,6 +153,12 @@ func (h *SubjectHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	var input domain.PatchSubjectInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Ensure at least one field was passed to update
+	if !input.HasUpdates() {
+		sendError(w, http.StatusBadRequest, "At least one field must be provided for update", nil)
 		return
 	}
 

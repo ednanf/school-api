@@ -47,6 +47,8 @@ type Student struct {
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
 
+// TODO: Create HasContent
+
 // PopulatedStudent represents a student with embedded class metadata for GET responses
 type PopulatedStudent struct {
 	ID        int          `json:"id" db:"id"`
@@ -67,6 +69,11 @@ type PatchStudentInput struct {
 	Email     *string `json:"email" validate:"omitempty,email"`
 	ClassID   *int    `json:"class_id" validate:"omitempty,gt=0"`
 	IsActive  *bool   `json:"is_active" validate:"omitempty"`
+}
+
+// HasUpdates returns true if at least one field is provided in the patch payload
+func (p PatchStudentInput) HasUpdates() bool {
+	return p.FirstName != nil || p.LastName != nil || p.Email != nil || p.ClassID != nil || p.IsActive != nil
 }
 
 // BulkCreateStudentInput defines the JSON payload for inserting multiple students

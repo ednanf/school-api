@@ -46,6 +46,8 @@ func (h *ClassHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: Add HasContent
+
 	// Validate struct using the injected validator instance
 	if err := h.validate.StructCtx(r.Context(), &class); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
@@ -68,9 +70,8 @@ func (h *ClassHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 
 func (h *ClassHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the URL param to int
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid class ID", nil)
 		return
 	}
@@ -93,15 +94,9 @@ func (h *ClassHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 
 func (h *ClassHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the URL param
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		sendError(w, http.StatusBadRequest, "Invalid class ID", nil)
-		return
-	}
-
-	if id <= 0 {
-		sendError(w, http.StatusBadRequest, "Invalid class ID", nil)
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || id <= 0 {
+		sendError(w, http.StatusBadRequest, "Invalid department ID", nil)
 		return
 	}
 
@@ -156,14 +151,8 @@ func (h *ClassHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ClassHandler) HandleListStudentsByClassId(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	classID, err := strconv.Atoi(idStr)
+	classID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || classID <= 0 {
-		sendError(w, http.StatusBadRequest, "Invalid class ID", nil)
-		return
-	}
-
-	if classID <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid class ID", nil)
 		return
 	}

@@ -40,6 +40,10 @@ type PatchSubjectInput struct {
 	IsActive *bool   `json:"is_active" db:"is_active" validate:"omitempty"`
 }
 
+func (p PatchSubjectInput) HasUpdates() bool {
+	return p.Name != nil || p.IsActive != nil
+}
+
 // Normalize applies string normalization to user input fields
 func (s *Subject) Normalize(caser cases.Caser) {
 	s.Name = caser.String(strings.ToLower(strings.TrimSpace(s.Name)))

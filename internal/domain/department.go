@@ -33,10 +33,17 @@ type Department struct {
 	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
 }
 
+// TODO: Create HasContent
+
 // PatchDepartmentInput defines the JSON payload for inserting a department
 type PatchDepartmentInput struct {
 	Name        *string `json:"name" db:"name" validate:"omitempty,min=2,max=50"`
 	Description *string `json:"description" db:"description" validate:"omitempty,min=2,max=200"`
+}
+
+// HasUpdates returns true if at least one field is provided in the patch payload
+func (p PatchDepartmentInput) HasUpdates() bool {
+	return p.Name != nil || p.Description != nil
 }
 
 // Normalize applies string normalization to user input fields

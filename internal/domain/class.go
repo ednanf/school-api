@@ -16,6 +16,8 @@ type ClassRepository interface {
 	Update(ctx context.Context, c *Class) error
 }
 
+// TODO: Create HasContent
+
 type ClassService interface {
 	Create(ctx context.Context, c *Class) error
 	Delete(ctx context.Context, id int) error
@@ -43,7 +45,7 @@ type PatchClassInput struct {
 	IsActive *bool   `json:"is_active" db:"is_active" validate:"omitempty"`
 }
 
-// HasUpdates checks if at least one field is provided in the patch payload
+// HasUpdates returns true if at least one field is provided in the patch payload
 func (p PatchClassInput) HasUpdates() bool {
 	return p.Grade != nil || p.Letter != nil || p.IsActive != nil
 }

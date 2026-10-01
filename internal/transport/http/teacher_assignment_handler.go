@@ -66,9 +66,8 @@ func (h *TeacherAssignmentHandler) HandleCreate(w http.ResponseWriter, r *http.R
 
 func (h *TeacherAssignmentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the URL param to int
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid assignment ID", nil)
 		return
 	}
@@ -90,9 +89,8 @@ func (h *TeacherAssignmentHandler) HandleDelete(w http.ResponseWriter, r *http.R
 }
 
 func (h *TeacherAssignmentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid Assignment ID", nil)
 		return
 	}
@@ -144,9 +142,8 @@ func (h *TeacherAssignmentHandler) HandleList(w http.ResponseWriter, r *http.Req
 
 func (h *TeacherAssignmentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the id
-	idStr := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid assignment ID", nil)
 		return
 	}
@@ -154,6 +151,12 @@ func (h *TeacherAssignmentHandler) HandleUpdate(w http.ResponseWriter, r *http.R
 	var input domain.PatchTeacherAssignmentInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Ensure at least one field was passed to update
+	if !input.HasUpdates() {
+		sendError(w, http.StatusBadRequest, "At least one field must be provided for update", nil)
 		return
 	}
 
