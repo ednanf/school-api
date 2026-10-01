@@ -36,8 +36,6 @@ type Teacher struct {
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
 
-// TODO: Create HasContent
-
 // PatchTeacherInput defines the JSON payload for inserting one student
 type PatchTeacherInput struct {
 	// Since the types are primitives, pointers must be used to avoid overwriting nil values. Change "required" to "omitempty" because the values are optional

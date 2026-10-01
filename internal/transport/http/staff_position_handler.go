@@ -40,8 +40,6 @@ func (h *StaffPositionHandler) HandleCreate(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// TODO: Add HasContent
-
 	// Validate struct rules
 	if err := h.validate.StructCtx(r.Context(), &position); err != nil {
 		if validationsErrs, ok := err.(validator.ValidationErrors); ok {

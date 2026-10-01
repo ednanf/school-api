@@ -47,8 +47,6 @@ type Student struct {
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
 
-// TODO: Create HasContent
-
 // PopulatedStudent represents a student with embedded class metadata for GET responses
 type PopulatedStudent struct {
 	ID        int          `json:"id" db:"id"`

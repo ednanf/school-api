@@ -49,8 +49,6 @@ func (h *StudentHandler) HandleBulkCreate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// TODO: Add HasContent
-
 	// Validate incoming payload constraints
 	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
@@ -215,8 +213,6 @@ func (h *StudentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
 		return
 	}
-
-	// TODO: Add HasContent
 
 	// Validate struct rules using validator instance
 	if err := h.validate.StructCtx(r.Context(), &student); err != nil {

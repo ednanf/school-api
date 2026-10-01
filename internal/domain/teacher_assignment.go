@@ -32,8 +32,6 @@ type TeacherAssignment struct {
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
 
-// TODO: Create HasContent
-
 type PatchTeacherAssignmentInput struct {
 	TeacherID *int `json:"teacher_id" db:"teacher_id" validate:"omitempty,required,gt=0"`
 	ClassID   *int `json:"class_id" db:"class_id" validate:"omitempty,required,gt=0"`

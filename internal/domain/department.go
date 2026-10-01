@@ -33,8 +33,6 @@ type Department struct {
 	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
 }
 
-// TODO: Create HasContent
-
 // PatchDepartmentInput defines the JSON payload for inserting a department
 type PatchDepartmentInput struct {
 	Name        *string `json:"name" db:"name" validate:"omitempty,min=2,max=50"`

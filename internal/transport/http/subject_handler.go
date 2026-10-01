@@ -45,8 +45,6 @@ func (h *SubjectHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: add HasContent
-
 	if err := h.validate.StructCtx(r.Context(), &subject); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))

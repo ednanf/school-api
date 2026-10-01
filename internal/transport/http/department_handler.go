@@ -41,8 +41,6 @@ func (h *DepartmentHandler) HandleCreate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// TODO: Add HasContent
-
 	if err := h.validate.StructCtx(r.Context(), &department); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))

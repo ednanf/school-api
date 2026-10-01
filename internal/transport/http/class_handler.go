@@ -46,8 +46,6 @@ func (h *ClassHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Add HasContent
-
 	// Validate struct using the injected validator instance
 	if err := h.validate.StructCtx(r.Context(), &class); err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {

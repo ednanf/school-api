@@ -35,8 +35,6 @@ type StaffPosition struct {
 	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
 }
 
-// TODO: Create HasContent
-
 type PatchStaffPositionInput struct {
 	DepartmentID *int    `json:"department_id" db:"department_id" validate:"omitempty,gt=0"`
 	Title        *string `json:"title" db:"title" validate:"omitempty,min=2,max=100"`

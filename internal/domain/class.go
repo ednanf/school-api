@@ -16,8 +16,6 @@ type ClassRepository interface {
 	Update(ctx context.Context, c *Class) error
 }
 
-// TODO: Create HasContent
-
 type ClassService interface {
 	Create(ctx context.Context, c *Class) error
 	Delete(ctx context.Context, id int) error
