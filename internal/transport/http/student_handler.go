@@ -32,7 +32,7 @@ func (h *studentHandler) StudentRoutes() chi.Router {
 	r.Delete("/bulk", h.HandleBulkDelete)
 	r.Post("/bulk", h.HandleBulkCreate)
 	r.Patch("/bulk", h.HandleBulkUpdate)
-	r.Patch("/bulk_class", h.HandleBulkUpdateClass)
+	r.Patch("/class", h.HandleBulkUpdateClass)
 	r.Delete("/{id}", h.HandleDelete)
 	r.Get("/{id}", h.HandleGetByID)
 	r.Patch("/{id}", h.HandleUpdate)
