@@ -11,19 +11,19 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// TeacherHandler contains `repo` with a way to communicate with the database and the pointer to the validator instantiated in `main.go`
-type TeacherHandler struct {
+// teacherHandler contains `repo` with a way to communicate with the database and the pointer to the validator instantiated in `main.go`
+type teacherHandler struct {
 	service  domain.TeacherService
 	validate *validator.Validate
 }
 
 // NewTeacherHandler is a constructor that returns a pointer to a TeacherHandler struct, initializing it with the injected repository and validator dependencies
-func NewTeacherHandler(service domain.TeacherService, validate *validator.Validate) *TeacherHandler {
-	return &TeacherHandler{service: service, validate: validate}
+func NewTeacherHandler(service domain.TeacherService, validate *validator.Validate) *teacherHandler {
+	return &teacherHandler{service: service, validate: validate}
 }
 
 // Route paths
-func (h *TeacherHandler) TeacherRoutes() chi.Router {
+func (h *teacherHandler) TeacherRoutes() chi.Router {
 	r := chi.NewRouter()
 
 	r.Post("/", h.HandleCreate)
@@ -35,7 +35,7 @@ func (h *TeacherHandler) TeacherRoutes() chi.Router {
 	return r
 }
 
-func (h *TeacherHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
+func (h *teacherHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	// Initialize a Teacher struct
 	var teacher domain.Teacher
 
@@ -64,7 +64,7 @@ func (h *TeacherHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	sendSuccess(w, http.StatusCreated, "Teacher created successfully", teacher)
 }
 
-func (h *TeacherHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+func (h *teacherHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the URL param into int
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {
@@ -89,7 +89,7 @@ func (h *TeacherHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *TeacherHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
+func (h *teacherHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	// Obtain id and convert to int
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {
@@ -111,7 +111,7 @@ func (h *TeacherHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	sendSuccess(w, http.StatusOK, "", teacher)
 }
 
-func (h *TeacherHandler) HandleList(w http.ResponseWriter, r *http.Request) {
+func (h *teacherHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	// Parse query params
 	queryParams := r.URL.Query()
 	reqPage, _ := strconv.Atoi(queryParams.Get("page"))
@@ -141,7 +141,7 @@ func (h *TeacherHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	sendPaginated(w, http.StatusOK, teachers, meta)
 }
 
-func (h *TeacherHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
+func (h *teacherHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the id to int
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {

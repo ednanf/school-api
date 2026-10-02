@@ -11,19 +11,19 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// ClassHandler contains `repo` with a way to communicate with the database and the pointer to the validator instantiated once in `main.go`
-type ClassHandler struct {
+// classHandler contains `repo` with a way to communicate with the database and the pointer to the validator instantiated once in `main.go`
+type classHandler struct {
 	service  domain.ClassService
 	validate *validator.Validate
 }
 
 // NewClassHandler is a constructor that returns a pointer to a ClassHandler struct, initializing it with the injected repository and validator dependencies
-func NewClassHandler(service domain.ClassService, validate *validator.Validate) *ClassHandler {
-	return &ClassHandler{service: service, validate: validate}
+func NewClassHandler(service domain.ClassService, validate *validator.Validate) *classHandler {
+	return &classHandler{service: service, validate: validate}
 }
 
 // Route paths
-func (h *ClassHandler) ClassRoutes() chi.Router {
+func (h *classHandler) ClassRoutes() chi.Router {
 	r := chi.NewRouter()
 
 	r.Get("/", h.HandleList)
@@ -36,7 +36,7 @@ func (h *ClassHandler) ClassRoutes() chi.Router {
 	return r
 }
 
-func (h *ClassHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
+func (h *classHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	// Initialize a Class struct
 	var class domain.Class
 
@@ -66,7 +66,7 @@ func (h *ClassHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	sendSuccess(w, http.StatusCreated, "Class created successfully", class)
 }
 
-func (h *ClassHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+func (h *classHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the URL param to int
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {
@@ -90,7 +90,7 @@ func (h *ClassHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *ClassHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
+func (h *classHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the URL param
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {
@@ -118,7 +118,7 @@ func (h *ClassHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	sendSuccess(w, http.StatusOK, "", class)
 }
 
-func (h *ClassHandler) HandleList(w http.ResponseWriter, r *http.Request) {
+func (h *classHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 
 	reqPage, _ := strconv.Atoi(queryParams.Get("page"))
@@ -148,7 +148,7 @@ func (h *ClassHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	sendPaginated(w, http.StatusOK, classes, meta)
 }
 
-func (h *ClassHandler) HandleListStudentsByClassId(w http.ResponseWriter, r *http.Request) {
+func (h *classHandler) HandleListStudentsByClassId(w http.ResponseWriter, r *http.Request) {
 	classID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || classID <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid class ID", nil)
@@ -181,7 +181,7 @@ func (h *ClassHandler) HandleListStudentsByClassId(w http.ResponseWriter, r *htt
 	sendPaginated(w, http.StatusOK, students, meta)
 }
 
-func (h *ClassHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
+func (h *classHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid class ID", nil)

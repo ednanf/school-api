@@ -12,19 +12,19 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// StudentHandler contains `repo` with a way to communicate with the database and the pointer to the validator instantiated once in `main.go`
-type StudentHandler struct {
+// studentHandler contains `repo` with a way to communicate with the database and the pointer to the validator instantiated once in `main.go`
+type studentHandler struct {
 	service  domain.StudentService
 	validate *validator.Validate
 }
 
 // NewStudentHandler is a constructor that returns a pointer to a StudentHandler struct, initializing it with the injected repository and validator dependencies
-func NewStudentHandler(service domain.StudentService, validate *validator.Validate) *StudentHandler {
-	return &StudentHandler{service: service, validate: validate}
+func NewStudentHandler(service domain.StudentService, validate *validator.Validate) *studentHandler {
+	return &studentHandler{service: service, validate: validate}
 }
 
 // Route paths
-func (h *StudentHandler) StudentRoutes() chi.Router {
+func (h *studentHandler) StudentRoutes() chi.Router {
 	r := chi.NewRouter()
 
 	r.Get("/", h.HandleList)
@@ -40,7 +40,7 @@ func (h *StudentHandler) StudentRoutes() chi.Router {
 	return r
 }
 
-func (h *StudentHandler) HandleBulkCreate(w http.ResponseWriter, r *http.Request) {
+func (h *studentHandler) HandleBulkCreate(w http.ResponseWriter, r *http.Request) {
 	var input domain.BulkCreateStudentInput
 
 	// Decode HTTP body into DTO
@@ -77,7 +77,7 @@ func (h *StudentHandler) HandleBulkCreate(w http.ResponseWriter, r *http.Request
 	sendSuccess(w, http.StatusCreated, "Students created successfully", result)
 }
 
-func (h *StudentHandler) HandleBulkDelete(w http.ResponseWriter, r *http.Request) {
+func (h *studentHandler) HandleBulkDelete(w http.ResponseWriter, r *http.Request) {
 	var input domain.BulkDeleteStudentInput
 
 	// Decode HTTP body into DTO
@@ -116,7 +116,7 @@ func (h *StudentHandler) HandleBulkDelete(w http.ResponseWriter, r *http.Request
 	sendSuccess(w, http.StatusOK, "Students deleted successfully", meta)
 }
 
-func (h *StudentHandler) HandleBulkUpdate(w http.ResponseWriter, r *http.Request) {
+func (h *studentHandler) HandleBulkUpdate(w http.ResponseWriter, r *http.Request) {
 	var input domain.BulkUpdateStudentInput
 
 	// Decode HTTP body into DTO
@@ -162,7 +162,7 @@ func (h *StudentHandler) HandleBulkUpdate(w http.ResponseWriter, r *http.Request
 	sendSuccess(w, http.StatusOK, "Students updated successfully", result)
 }
 
-func (h *StudentHandler) HandleBulkUpdateClass(w http.ResponseWriter, r *http.Request) {
+func (h *studentHandler) HandleBulkUpdateClass(w http.ResponseWriter, r *http.Request) {
 	var input domain.BulkUpdateClassInput
 
 	// Decode HTTP body into DTO
@@ -205,7 +205,7 @@ func (h *StudentHandler) HandleBulkUpdateClass(w http.ResponseWriter, r *http.Re
 	sendSuccess(w, http.StatusOK, "Class updated successfully", meta)
 }
 
-func (h *StudentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
+func (h *studentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	var student domain.Student
 
 	// Decode JSON body directly into domain.Student
@@ -234,7 +234,7 @@ func (h *StudentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	sendSuccess(w, http.StatusCreated, "Student created successfully", student)
 }
 
-func (h *StudentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+func (h *studentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert URL param to integer
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {
@@ -257,7 +257,7 @@ func (h *StudentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *StudentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
+func (h *studentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert URL param to integer
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {
@@ -279,7 +279,7 @@ func (h *StudentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	sendSuccess(w, http.StatusOK, "Student retrieved successfully", student)
 }
 
-func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
+func (h *studentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 
 	// Parse page (default: 1)
@@ -326,7 +326,7 @@ func (h *StudentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	sendPaginated(w, http.StatusOK, students, meta)
 }
 
-func (h *StudentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
+func (h *studentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert student ID from URL path parameter
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {

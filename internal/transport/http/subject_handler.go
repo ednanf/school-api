@@ -11,19 +11,19 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// SubjectHandler contains `repo` with a way to communicate with the database and the pointer to the validator instantiated once in `main.go`
-type SubjectHandler struct {
+// subjectHandler contains `repo` with a way to communicate with the database and the pointer to the validator instantiated once in `main.go`
+type subjectHandler struct {
 	service  domain.SubjectService
 	validate *validator.Validate
 }
 
 // NewSubjectHandler isa constructor that returns a pointer to a SubjectHandler struct, initializing it with the injected repository and validator dependencies
-func NewSubjectHandler(service domain.SubjectService, validate *validator.Validate) *SubjectHandler {
-	return &SubjectHandler{service: service, validate: validate}
+func NewSubjectHandler(service domain.SubjectService, validate *validator.Validate) *subjectHandler {
+	return &subjectHandler{service: service, validate: validate}
 }
 
 // Route paths
-func (h *SubjectHandler) SubjectRoutes() chi.Router {
+func (h *subjectHandler) SubjectRoutes() chi.Router {
 	r := chi.NewRouter()
 
 	r.Get("/", h.HandleList)
@@ -35,7 +35,7 @@ func (h *SubjectHandler) SubjectRoutes() chi.Router {
 	return r
 }
 
-func (h *SubjectHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
+func (h *subjectHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	// Initialize a Subject struct
 	var subject domain.Subject
 
@@ -63,7 +63,7 @@ func (h *SubjectHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	sendSuccess(w, http.StatusCreated, "Subject created successfully", subject)
 }
 
-func (h *SubjectHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+func (h *subjectHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the URL param to int
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {
@@ -87,7 +87,7 @@ func (h *SubjectHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *SubjectHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
+func (h *subjectHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the URL param
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {
@@ -109,7 +109,7 @@ func (h *SubjectHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	sendSuccess(w, http.StatusOK, "", subject)
 }
 
-func (h *SubjectHandler) HandleList(w http.ResponseWriter, r *http.Request) {
+func (h *subjectHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 
 	// Error is not needed as default values are in place
@@ -139,7 +139,7 @@ func (h *SubjectHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	sendPaginated(w, http.StatusOK, subjects, meta)
 }
 
-func (h *SubjectHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
+func (h *subjectHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the id to int
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {

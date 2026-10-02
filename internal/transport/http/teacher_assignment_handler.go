@@ -11,18 +11,18 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type TeacherAssignmentHandler struct {
+type teacherAssignmentHandler struct {
 	service  domain.TeacherAssignmentService
 	validate *validator.Validate
 }
 
 // NewTeacherAssignmentHandler is a constructor that returns a pointer to a TeacherAssignmentHandler struct, initializing it with the injected service and validator dependencies
-func NewTeacherAssignmentHandler(service domain.TeacherAssignmentService, validate *validator.Validate) *TeacherAssignmentHandler {
-	return &TeacherAssignmentHandler{service: service, validate: validate}
+func NewTeacherAssignmentHandler(service domain.TeacherAssignmentService, validate *validator.Validate) *teacherAssignmentHandler {
+	return &teacherAssignmentHandler{service: service, validate: validate}
 }
 
 // Route paths
-func (h *TeacherAssignmentHandler) TeacherAssignmentRoutes() chi.Router {
+func (h *teacherAssignmentHandler) TeacherAssignmentRoutes() chi.Router {
 	r := chi.NewRouter()
 
 	r.Get("/", h.HandleList)
@@ -34,7 +34,7 @@ func (h *TeacherAssignmentHandler) TeacherAssignmentRoutes() chi.Router {
 	return r
 }
 
-func (h *TeacherAssignmentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
+func (h *teacherAssignmentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	// Initialize a struct
 	var assignment domain.TeacherAssignment
 
@@ -64,7 +64,7 @@ func (h *TeacherAssignmentHandler) HandleCreate(w http.ResponseWriter, r *http.R
 	sendSuccess(w, http.StatusCreated, "Assignment created successfully", assignment)
 }
 
-func (h *TeacherAssignmentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+func (h *teacherAssignmentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the URL param to int
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {
@@ -88,7 +88,7 @@ func (h *TeacherAssignmentHandler) HandleDelete(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *TeacherAssignmentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
+func (h *teacherAssignmentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid Assignment ID", nil)
@@ -110,7 +110,7 @@ func (h *TeacherAssignmentHandler) HandleGetByID(w http.ResponseWriter, r *http.
 	sendSuccess(w, http.StatusOK, "", t)
 }
 
-func (h *TeacherAssignmentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
+func (h *teacherAssignmentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	// Parse URL params
 	queryParams := r.URL.Query()
 	reqPage, _ := strconv.Atoi(queryParams.Get("page"))
@@ -140,7 +140,7 @@ func (h *TeacherAssignmentHandler) HandleList(w http.ResponseWriter, r *http.Req
 	sendPaginated(w, http.StatusOK, assignments, meta)
 }
 
-func (h *TeacherAssignmentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
+func (h *teacherAssignmentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the id
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {

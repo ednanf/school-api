@@ -12,16 +12,16 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type DepartmentHandler struct {
+type departmentHandler struct {
 	service  domain.DepartmentService
 	validate *validator.Validate
 }
 
-func NewDepartmentHandler(service domain.DepartmentService, validate *validator.Validate) *DepartmentHandler {
-	return &DepartmentHandler{service: service, validate: validate}
+func NewDepartmentHandler(service domain.DepartmentService, validate *validator.Validate) *departmentHandler {
+	return &departmentHandler{service: service, validate: validate}
 }
 
-func (h *DepartmentHandler) DepartmentRoutes() chi.Router {
+func (h *departmentHandler) DepartmentRoutes() chi.Router {
 	r := chi.NewRouter()
 
 	r.Get("/", h.HandleList)
@@ -33,7 +33,7 @@ func (h *DepartmentHandler) DepartmentRoutes() chi.Router {
 	return r
 }
 
-func (h *DepartmentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
+func (h *departmentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	var department domain.Department
 
 	if err := json.NewDecoder(r.Body).Decode(&department); err != nil {
@@ -59,7 +59,7 @@ func (h *DepartmentHandler) HandleCreate(w http.ResponseWriter, r *http.Request)
 	sendSuccess(w, http.StatusCreated, "Department created successfully", department)
 }
 
-func (h *DepartmentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+func (h *departmentHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid department ID", nil)
@@ -78,7 +78,7 @@ func (h *DepartmentHandler) HandleDelete(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *DepartmentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
+func (h *departmentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid department ID", nil)
@@ -98,7 +98,7 @@ func (h *DepartmentHandler) HandleGetByID(w http.ResponseWriter, r *http.Request
 	sendSuccess(w, http.StatusOK, "Department retrieved successfully", dept)
 }
 
-func (h *DepartmentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
+func (h *departmentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 
 	reqPage, _ := strconv.Atoi(queryParams.Get("page"))
@@ -127,7 +127,7 @@ func (h *DepartmentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	sendPaginated(w, http.StatusOK, departments, meta)
 }
 
-func (h *DepartmentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
+func (h *departmentHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {
 		sendError(w, http.StatusBadRequest, "Invalid department ID", nil)

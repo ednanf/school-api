@@ -11,16 +11,16 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type StaffPositionHandler struct {
+type staffPositionHandler struct {
 	service  domain.StaffPositionService
 	validate *validator.Validate
 }
 
-func NewStaffPositionHandler(service domain.StaffPositionService, validate *validator.Validate) *StaffPositionHandler {
-	return &StaffPositionHandler{service: service, validate: validate}
+func NewStaffPositionHandler(service domain.StaffPositionService, validate *validator.Validate) *staffPositionHandler {
+	return &staffPositionHandler{service: service, validate: validate}
 }
 
-func (h *StaffPositionHandler) StaffPositionRoutes() chi.Router {
+func (h *staffPositionHandler) StaffPositionRoutes() chi.Router {
 	r := chi.NewRouter()
 
 	r.Get("/", h.HandleList)
@@ -32,7 +32,7 @@ func (h *StaffPositionHandler) StaffPositionRoutes() chi.Router {
 	return r
 }
 
-func (h *StaffPositionHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
+func (h *staffPositionHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	var position domain.StaffPosition
 
 	if err := json.NewDecoder(r.Body).Decode(&position); err != nil {
@@ -59,7 +59,7 @@ func (h *StaffPositionHandler) HandleCreate(w http.ResponseWriter, r *http.Reque
 	sendSuccess(w, http.StatusCreated, "Position created successfully", position)
 }
 
-func (h *StaffPositionHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+func (h *staffPositionHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert url param
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {
@@ -81,7 +81,7 @@ func (h *StaffPositionHandler) HandleDelete(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *StaffPositionHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
+func (h *staffPositionHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert the url param
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {
@@ -104,7 +104,7 @@ func (h *StaffPositionHandler) HandleGetByID(w http.ResponseWriter, r *http.Requ
 	sendSuccess(w, http.StatusOK, "Position retrieved successfully", position)
 }
 
-func (h *StaffPositionHandler) HandleList(w http.ResponseWriter, r *http.Request) {
+func (h *staffPositionHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 
 	// Parse page
@@ -151,7 +151,7 @@ func (h *StaffPositionHandler) HandleList(w http.ResponseWriter, r *http.Request
 	sendPaginated(w, http.StatusOK, positions, meta)
 }
 
-func (h *StaffPositionHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
+func (h *staffPositionHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	// Extract and convert url param
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil || id <= 0 {
