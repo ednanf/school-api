@@ -91,6 +91,10 @@ func main() {
 	staffPositionService := service.NewStaffPositionService(staffPositionRepo)
 	staffPositionHandler := transportHttp.NewStaffPositionHandler(staffPositionService, validate)
 
+	staffRepo := repository.NewStaffRepository(db)
+	staffService := service.NewStaffService(staffRepo)
+	staffHandler := transportHttp.NewStaffHandler(staffService, validate)
+
 	// Mount the routes under a versioned API prefix
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Mount("/students", studentHandler.StudentRoutes())
@@ -100,6 +104,7 @@ func main() {
 		r.Mount("/teacher_assignments", teacherAssignmentHandler.TeacherAssignmentRoutes())
 		r.Mount("/departments", departmentHandler.DepartmentRoutes())
 		r.Mount("/staff_positions", staffPositionHandler.StaffPositionRoutes())
+		r.Mount("/staff", staffHandler.StaffRoutes())
 	})
 
 	log.Printf("[SYSTEM] Server running on port %s...", port)
