@@ -29,7 +29,7 @@ type SubjectService interface {
 type Subject struct {
 	ID        int       `json:"id" db:"id"`
 	Name      string    `json:"name" db:"name" validate:"required,min=1,max=50"`
-	IsActive  bool      `json:"is_active" db:"is_active" validate:"required"`
+	IsActive  bool      `json:"is_active" db:"is_active" validate:"boolean"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }

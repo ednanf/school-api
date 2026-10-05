@@ -30,7 +30,7 @@ type StaffPosition struct {
 	DepartmentID int       `json:"department_id" db:"department_id" validate:"required,gt=0"`
 	Title        string    `json:"title" db:"title" validate:"required,min=2,max=100"`
 	Description  string    `json:"description" db:"description" validate:"required,min=2,max=300"`
-	IsActive     bool      `json:"is_active" db:"is_active" validate:"required"`
+	IsActive     bool      `json:"is_active" db:"is_active" validate:"boolean"`
 	CreatedAt    time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
 }

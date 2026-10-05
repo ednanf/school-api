@@ -31,7 +31,7 @@ type Teacher struct {
 	FirstName string    `json:"first_name" db:"first_name" validate:"required,min=2,max=50"`
 	LastName  string    `json:"last_name" db:"last_name" validate:"required,min=2,max=50"`
 	Email     string    `json:"email" db:"email" validate:"required,email"`
-	IsActive  bool      `json:"is_active" db:"is_active" validate:"required"`
+	IsActive  bool      `json:"is_active" db:"is_active" validate:"boolean"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }

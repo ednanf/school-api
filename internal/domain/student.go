@@ -42,7 +42,7 @@ type Student struct {
 	LastName  string    `json:"last_name" db:"last_name" validate:"required,min=2,max=50"`
 	Email     string    `json:"email" db:"email" validate:"required,email"`
 	ClassID   int       `json:"class_id" db:"class_id" validate:"required,gt=0"`
-	IsActive  bool      `json:"is_active" db:"is_active" validate:"required"`
+	IsActive  bool      `json:"is_active" db:"is_active" validate:"boolean"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }

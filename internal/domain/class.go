@@ -30,7 +30,7 @@ type Class struct {
 	ID        int       `json:"id" db:"id"`
 	Grade     int       `json:"grade" db:"grade" validate:"required,min=1,max=9"`
 	Letter    string    `json:"letter" db:"letter" validate:"required,oneof=A B C D"`
-	IsActive  bool      `json:"is_active" db:"is_active" validate:"required"`
+	IsActive  bool      `json:"is_active" db:"is_active" validate:"boolean"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
