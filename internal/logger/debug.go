@@ -1,7 +1,7 @@
 package logger
 
-import "fmt"
+import "log"
 
 func DebugLogger(error error) {
-	fmt.Printf("[DEBUG] %s\n", error)
+	log.Printf("[DEBUG] %s\n", error)
 }
