@@ -159,5 +159,33 @@ func (r *staffRepo) List(ctx context.Context, limit, offset int) (staff []domain
 }
 
 func (r *staffRepo) Update(ctx context.Context, e *domain.Staff) error {
+	query := `
+		UPDATE staff SET
+			position_id = :position_id,
+			first_name = :first_name,
+		 	last_name = :last_name,
+			email = :email,
+		 	hire_date = :hire_date,
+			is_active = :is_active,
+			created_at = :created_at,
+		 	updated_at = :updated_at
+		WHERE
+			id = :id
+	`
+
+	result, err := r.db.NamedExecContext(ctx, query, e)
+	if err != nil {
+		return fmt.Errorf("staffRepo.Update execute: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("staffRepo.Update rows affected: %w", err)
+	}
+
+	if rows == 0 {
+		return fmt.Errorf("staffRepo.Update: %w", domain.ErrNotFound)
+	}
+
 	return nil
 }

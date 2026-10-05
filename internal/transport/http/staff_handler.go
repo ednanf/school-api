@@ -152,5 +152,48 @@ func (h *staffHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *staffHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
-	sendSuccess(w, http.StatusOK, "update hit", nil)
+	// Extract and convert url param
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || id <= 0 {
+		sendError(w, http.StatusBadRequest, "Invalid staff member id", nil)
+		return
+	}
+
+	// Decode the HTTP body
+	var input domain.PatchStaffInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
+		return
+	}
+
+	// Ensure there's at least one field to HandleUpdate
+	if !input.HasUpdates() {
+		sendError(w, http.StatusBadRequest, "At least one field must be provided for update", nil)
+		return
+	}
+
+	// Validate the payload
+	if err := h.validate.StructCtx(r.Context(), &input); err != nil {
+		if validationErrs, ok := err.(validator.ValidationErrors); ok {
+			sendError(w, http.StatusUnprocessableEntity, "Validation failed", formatValidationErrors(validationErrs))
+			return
+		}
+		sendError(w, http.StatusBadRequest, "Validation failed", nil)
+		return
+	}
+
+	// Delegate business logic to the service layer
+	updatedEmployee, err := h.service.Update(r.Context(), id, input)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			sendError(w, http.StatusNotFound, "Staff member not found", nil)
+			return
+		}
+		sendError(w, http.StatusInternalServerError, "Failed to update staff member", nil)
+		return
+	}
+
+	fmt.Println(updatedEmployee.HireDateString)
+
+	sendSuccess(w, http.StatusOK, "Staff member updated successfully", updatedEmployee)
 }
