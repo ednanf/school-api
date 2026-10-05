@@ -12,15 +12,15 @@ type StaffRepository interface {
 	Create(ctx context.Context, e *Staff) error
 	Delete(ctx context.Context, id int) error
 	GetByID(ctx context.Context, id int) (*PopulatedStaff, error)
-	List(ctx context.Context, page, offset int) (employees []PopulatedStaff, totalItems int, err error)
+	List(ctx context.Context, limit, offset int) (staff []PopulatedStaff, totalItems int, err error)
 	Update(ctx context.Context, e *Staff) error
 }
 
 type StaffService interface {
 	Create(ctx context.Context, e *Staff) error
 	Delete(ctx context.Context, id int) error
-	GetById(ctx context.Context, id int) (*PopulatedStaff, error)
-	List(ctx context.Context, limit, offset int) (employees []PopulatedStaff, totalItems int, err error)
+	GetByID(ctx context.Context, id int) (*PopulatedStaff, error)
+	List(ctx context.Context, limit, offset int) (staff []PopulatedStaff, totalItems int, err error)
 	Update(ctx context.Context, id int, input PatchStaffInput) (*Staff, error)
 }
 
@@ -30,11 +30,11 @@ type Staff struct {
 	FirstName      string    `json:"first_name" db:"first_name" validate:"required,min=2,max=50"`
 	LastName       string    `json:"last_name" db:"last_name" validate:"required,min=2,max=50"`
 	Email          string    `json:"email" db:"email" validate:"required,email"`
-	HireDateString string    `json:"hire_date" validate:"required"` // JSON payload
-	HireDate       time.Time `json:"-" db:"hire_date"`
-	IsActive       bool      `json:"is_active" db:"is_active" validate:"required"`
-	Created_At     time.Time `json:"created_at" db:"created_at"`
-	Updated_At     time.Time `json:"updated_at" db:"updated_at"`
+	HireDateString string    `json:"hire_date" validate:"required"` // Received from the JSON payload, not sent to the database
+	HireDate       time.Time `json:"-" db:"hire_date"`              // Converted in the service layer
+	IsActive       bool      `json:"is_active" db:"is_active" validate:"boolean"`
+	CreatedAt      time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // StaffPositionSummary represents embedded staff position data inside PopulatedStaff
@@ -45,17 +45,16 @@ type StaffPositionSummary struct {
 	Description string            `json:"description" db:"description"`
 }
 
-// TODO: Verify if the Position type is properly setup for chaining a JOIN operation
 type PopulatedStaff struct {
-	ID         int                  `json:"id" db:"id"`
-	Position   StaffPositionSummary `json:"position" db:"position"`
-	FirstName  string               `json:"first_name" db:"first_name"`
-	LastName   string               `json:"last_name" db:"last_name"`
-	Email      string               `json:"email" db:"email"`
-	HireDate   time.Time            `json:"hire_date"`
-	IsActive   bool                 `json:"is_active"`
-	Created_At time.Time            `json:"created_at" db:"created_at"`
-	Updated_At time.Time            `json:"updated_at" db:"updated_at"`
+	ID        int                  `json:"id" db:"id"`
+	Position  StaffPositionSummary `json:"position" db:"position"`
+	FirstName string               `json:"first_name" db:"first_name"`
+	LastName  string               `json:"last_name" db:"last_name"`
+	Email     string               `json:"email" db:"email"`
+	HireDate  time.Time            `json:"hire_date" db:"hire_date"`
+	IsActive  bool                 `json:"is_active" db:"is_active"`
+	CreatedAt time.Time            `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time            `json:"updated_at" db:"updated_at"`
 }
 
 type PatchStaffInput struct {
