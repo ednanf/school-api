@@ -193,7 +193,5 @@ func (h *staffHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(updatedEmployee.HireDateString)
-
 	sendSuccess(w, http.StatusOK, "Staff member updated successfully", updatedEmployee)
 }

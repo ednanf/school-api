@@ -25,16 +25,15 @@ type StaffService interface {
 }
 
 type Staff struct {
-	ID             int       `json:"id" db:"id"`
-	PositionID     int       `json:"position_id" db:"position_id" validate:"required,gt=0"`
-	FirstName      string    `json:"first_name" db:"first_name" validate:"required,min=2,max=50"`
-	LastName       string    `json:"last_name" db:"last_name" validate:"required,min=2,max=50"`
-	Email          string    `json:"email" db:"email" validate:"required,email"`
-	HireDateString string    `json:"hire_date" validate:"required"` // Received from the JSON payload, not sent to the database – exposed in JSON
-	HireDate       time.Time `json:"-" db:"hire_date"`              // Converted in the service layer - hidden in JSON
-	IsActive       bool      `json:"is_active" db:"is_active" validate:"boolean"`
-	CreatedAt      time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at" db:"updated_at"`
+	ID         int       `json:"id" db:"id"`
+	PositionID int       `json:"position_id" db:"position_id" validate:"required,gt=0"`
+	FirstName  string    `json:"first_name" db:"first_name" validate:"required,min=2,max=50"`
+	LastName   string    `json:"last_name" db:"last_name" validate:"required,min=2,max=50"`
+	Email      string    `json:"email" db:"email" validate:"required,email"`
+	HireDate   time.Time `json:"hire_date" db:"hire_date" validate:"required"`
+	IsActive   bool      `json:"is_active" db:"is_active" validate:"boolean"`
+	CreatedAt  time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // StaffPositionSummary represents embedded staff position data inside PopulatedStaff
@@ -58,13 +57,12 @@ type PopulatedStaff struct {
 }
 
 type PatchStaffInput struct {
-	PositionID     *int       `json:"position_id" db:"position_id" validate:"omitempty,gt=0"`
-	FirstName      *string    `json:"first_name" db:"first_name" validate:"omitempty,min=2,max=50"`
-	LastName       *string    `json:"last_name" db:"last_name" validate:"omitempty,min=2,max=50"`
-	Email          *string    `json:"email" db:"email" validate:"omitempty,email"`
-	HireDateString *string    `json:"hire_date" validate:"omitempty"`
-	HireDate       *time.Time `json:"-" db:"hire_date"`
-	IsActive       *bool      `json:"is_active" db:"is_active" validate:"omitempty"`
+	PositionID *int       `json:"position_id" db:"position_id" validate:"omitempty,gt=0"`
+	FirstName  *string    `json:"first_name" db:"first_name" validate:"omitempty,min=2,max=50"`
+	LastName   *string    `json:"last_name" db:"last_name" validate:"omitempty,min=2,max=50"`
+	Email      *string    `json:"email" db:"email" validate:"omitempty,email"`
+	HireDate   *time.Time `json:"hire_date" db:"hire_date"`
+	IsActive   *bool      `json:"is_active" db:"is_active" validate:"omitempty"`
 }
 
 // HasUpdates returns true if at least one field is provided in the patch payload

@@ -25,13 +25,6 @@ func NewStaffService(repo domain.StaffRepository) domain.StaffService {
 func (s *staffService) Create(ctx context.Context, e *domain.Staff) error {
 	now := time.Now().UTC()
 
-	// Parse date string into time.Time
-	parsedDate, err := time.Parse("2006-01-02", e.HireDateString)
-	if err != nil {
-		return fmt.Errorf("staffService.Create: invalid hire_date format: %w", err)
-	}
-	e.HireDate = parsedDate
-
 	// Normalize and timestamp
 	e.Normalize(s.caser)
 	e.CreatedAt = now
@@ -92,16 +85,15 @@ func (s *staffService) Update(ctx context.Context, id int, input domain.PatchSta
 
 	// Map the existing record to domain.Staff
 	employee := domain.Staff{
-		ID:             existing.ID,
-		PositionID:     existing.Position.ID,
-		FirstName:      existing.FirstName,
-		LastName:       existing.LastName,
-		Email:          existing.Email,
-		HireDateString: existing.HireDate.Format("2006-01-02"), // Preserve original date in string format if not provided in patch
-		HireDate:       existing.HireDate,
-		IsActive:       existing.IsActive,
-		CreatedAt:      existing.CreatedAt,
-		UpdatedAt:      existing.UpdatedAt,
+		ID:         existing.ID,
+		PositionID: existing.Position.ID,
+		FirstName:  existing.FirstName,
+		LastName:   existing.LastName,
+		Email:      existing.Email,
+		HireDate:   existing.HireDate,
+		IsActive:   existing.IsActive,
+		CreatedAt:  existing.CreatedAt,
+		UpdatedAt:  existing.UpdatedAt,
 	}
 
 	// Apply non-nil updates
@@ -117,18 +109,8 @@ func (s *staffService) Update(ctx context.Context, id int, input domain.PatchSta
 	if input.Email != nil {
 		employee.Email = *input.Email
 	}
-	if input.HireDateString != nil {
-		// Parse date coming from the JSON payload
-		parsedDate, err := time.Parse("2006-01-02", *input.HireDateString)
-		if err != nil {
-			return nil, fmt.Errorf("staffService.Update: invalid hire_date format: %w", err)
-		}
-
-		// Set it in the actual field used in the database
-		employee.HireDate = parsedDate
-
-		// Necessary so the date sent throught the payload appears back in the success response (will simply put the same date that came from the payload in the JSON to be sent back)
-		employee.HireDateString = *input.HireDateString
+	if input.HireDate != nil {
+		employee.HireDate = *input.HireDate
 	}
 	if input.IsActive != nil {
 		employee.IsActive = *input.IsActive
