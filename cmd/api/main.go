@@ -13,6 +13,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 
+	"github.com/ednanf/school-api/internal/pkg/hasher"
 	"github.com/ednanf/school-api/internal/repository"
 	"github.com/ednanf/school-api/internal/service"
 	transportHttp "github.com/ednanf/school-api/internal/transport/http"
@@ -95,6 +96,11 @@ func main() {
 	staffService := service.NewStaffService(staffRepo)
 	staffHandler := transportHttp.NewStaffHandler(staffService, validate)
 
+	hasher := hasher.NewArgon2Hasher()
+	userRepo := repository.NewUserRepository(db)
+	userService := service.NewUserService(userRepo, hasher)
+	userHandler := transportHttp.NewUserHandler(userService, validate)
+
 	// Mount the routes under a versioned API prefix
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Mount("/students", studentHandler.StudentRoutes())
@@ -105,6 +111,7 @@ func main() {
 		r.Mount("/departments", departmentHandler.DepartmentRoutes())
 		r.Mount("/staff_positions", staffPositionHandler.StaffPositionRoutes())
 		r.Mount("/staff", staffHandler.StaffRoutes())
+		r.Mount("/users", userHandler.UserRoutes())
 	})
 
 	log.Printf("[SYSTEM] Server running on port %s...", port)
