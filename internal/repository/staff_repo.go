@@ -10,13 +10,10 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// TODO: Staff has to populate with StaffPosition, which populates with Departments. Study how to properly populate everything
-
 type staffRepo struct {
 	db *sqlx.DB
 }
 
-// TODO: Start building the repository
 func NewStaffRepository(db *sqlx.DB) domain.StaffRepository {
 	return &staffRepo{db: db}
 }
