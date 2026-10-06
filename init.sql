@@ -225,7 +225,7 @@ CREATE TABLE IF NOT EXISTS users (
 
     -- Restrict role to known system permissions
     role VARCHAR(30) NOT NULL DEFAULT 'STAFF'
-        CHECK (role IN ('SUPER_ADMIN', 'ADMIN', 'TEACHER', 'STAFF', 'STUDENT', 'PARENT')),
+        CHECK (role IN ('SUPER_ADMIN', 'ADMIN', 'STAFF')),
 
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     last_login_at TIMESTAMP NULL,
