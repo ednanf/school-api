@@ -68,6 +68,16 @@ type PatchUserInput struct {
 	IsActive *bool     `json:"is_active" validate:"omitempty"`
 }
 
+// UserResponse carries payload fields for the response of POST/PATCH /users, ensuring no password/hash is present in the struct
+type UserResponse struct {
+	ID       int      `json:"id"`
+	StaffID  *int     `json:"staff_id,omitempty"`
+	Username string   `json:"username"`
+	Email    string   `json:"email"`
+	Role     UserRole `json:"role"`
+	IsActive bool     `json:"is_active"`
+}
+
 func (p PatchUserInput) HasUpdates() bool {
 	return p.StaffID != nil || p.Username != nil || p.Email != nil || p.Role != nil || p.IsActive != nil
 }

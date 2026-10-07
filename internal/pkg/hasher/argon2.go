@@ -22,6 +22,7 @@ type argon2Hasher struct {
 // NewArgon2Hasher initializes sensible, OWASP-aligned defaults for web apps:
 // 64 MB memory, 1 iteration, 4 parallel threads, 16-byte salt, 32-byte key.
 func NewArgon2Hasher() domain.PasswordHasher {
+	// By returning the interface domain.PasswordHasher, the contract is enforced right at the creation
 	return &argon2Hasher{
 		time:    1,
 		memory:  64 * 1024, // 64 MB
@@ -31,6 +32,9 @@ func NewArgon2Hasher() domain.PasswordHasher {
 	}
 }
 
+// Hash receives a password string and returns a hashed string with 16-byte salt and 32-byte key
+// encoded to a standard PHC format:
+// `$argon2id$v=19$m=65536,t=1,p=4$<salt>$<hash>`
 func (h *argon2Hasher) Hash(password string) (string, error) {
 	if strings.TrimSpace(password) == "" {
 		return "", domain.ErrEmptyPassword
@@ -55,6 +59,7 @@ func (h *argon2Hasher) Hash(password string) (string, error) {
 	return encoded, nil
 }
 
+// Verify receives the user input password string and the encodedHash retrieved from the database
 func (h *argon2Hasher) Verify(password, encodedHash string) (bool, error) {
 	if strings.TrimSpace(password) == "" {
 		return false, domain.ErrEmptyPassword

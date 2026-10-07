@@ -63,6 +63,7 @@ func (r *userRepo) GetByID(ctx context.Context, id int) (*domain.User, error) {
 	return &u, nil
 }
 
+// GetByEmail is used interally for email lookup for authentication endpoints such as login
 func (r *userRepo) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	query := `
 		SELECT

@@ -62,7 +62,16 @@ func (h *userHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendSuccess(w, http.StatusCreated, "User created successfully", user)
+	response := domain.UserResponse{
+		ID:       user.ID,
+		StaffID:  user.StaffID,
+		Username: user.Username,
+		Email:    user.Email,
+		Role:     user.Role,
+		IsActive: user.IsActive,
+	}
+
+	sendSuccess(w, http.StatusCreated, "User created successfully", response)
 }
 
 func (h *userHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
@@ -161,7 +170,16 @@ func (h *userHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendSuccess(w, http.StatusOK, "User updated successfully", updatedUser)
+	response := domain.UserResponse{
+		ID:       updatedUser.ID,
+		StaffID:  updatedUser.StaffID,
+		Username: updatedUser.Username,
+		Email:    updatedUser.Email,
+		Role:     updatedUser.Role,
+		IsActive: updatedUser.IsActive,
+	}
+
+	sendSuccess(w, http.StatusOK, "User updated successfully", response)
 }
 
 func (h *userHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {

@@ -23,7 +23,7 @@ func NewUserService(repo domain.UserRepository, hasher domain.PasswordHasher) do
 func (s *userService) Create(ctx context.Context, u *domain.User, plainPassword string) error {
 	u.Normalize()
 
-	// Use your Argon2Hasher via domain.PasswordHasher interface
+	// Use Argon2Hasher via domain.PasswordHasher interface
 	hashedPassword, err := s.hasher.Hash(plainPassword)
 	if err != nil {
 		return fmt.Errorf("userService.Create hash password: %w", err)
