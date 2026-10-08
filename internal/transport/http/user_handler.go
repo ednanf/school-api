@@ -49,6 +49,7 @@ func (h *userHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Create an user struct to be passed to Create service. The password, however, will come directly from the decoded JSON (var input)
 	user := domain.User{
 		StaffID:  input.StaffID,
 		Username: input.Username,
@@ -62,6 +63,7 @@ func (h *userHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Response payload is a separate struct from User, to avoid leaking credentials
 	response := domain.UserResponse{
 		ID:       user.ID,
 		StaffID:  user.StaffID,
@@ -72,6 +74,25 @@ func (h *userHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sendSuccess(w, http.StatusCreated, "User created successfully", response)
+}
+
+func (h *userHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || id <= 0 {
+		sendError(w, http.StatusBadRequest, "Invalid user ID", nil)
+		return
+	}
+
+	if err := h.service.Delete(r.Context(), id); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			sendError(w, http.StatusNotFound, "User not found", nil)
+			return
+		}
+		sendError(w, http.StatusInternalServerError, "Failed to delete user", nil)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *userHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
@@ -170,6 +191,7 @@ func (h *userHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Response uses UserReponse instead of User to avoid password leakage
 	response := domain.UserResponse{
 		ID:       updatedUser.ID,
 		StaffID:  updatedUser.StaffID,
@@ -180,23 +202,4 @@ func (h *userHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sendSuccess(w, http.StatusOK, "User updated successfully", response)
-}
-
-func (h *userHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-	if err != nil || id <= 0 {
-		sendError(w, http.StatusBadRequest, "Invalid user ID", nil)
-		return
-	}
-
-	if err := h.service.Delete(r.Context(), id); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			sendError(w, http.StatusNotFound, "User not found", nil)
-			return
-		}
-		sendError(w, http.StatusInternalServerError, "Failed to delete user", nil)
-		return
-	}
-
-	w.WriteHeader(http.StatusNoContent)
 }
