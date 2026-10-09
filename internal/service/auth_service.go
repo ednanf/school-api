@@ -11,12 +11,14 @@ import (
 	"time"
 
 	"github.com/ednanf/school-api/internal/domain"
+	logger "github.com/ednanf/school-api/internal/pkg/loggers"
 )
 
 type authService struct {
 	userRepo domain.UserRepository
 	hasher   domain.PasswordHasher
 	tokens   domain.TokenService
+	mailer   domain.Mailer
 	jwtTTL   time.Duration
 }
 
@@ -24,12 +26,14 @@ func NewAuthService(
 	userRepo domain.UserRepository,
 	hasher domain.PasswordHasher,
 	tokens domain.TokenService,
+	mailer domain.Mailer,
 	jwtTTL time.Duration,
 ) domain.AuthService {
 	return &authService{
 		userRepo: userRepo,
 		hasher:   hasher,
 		tokens:   tokens,
+		mailer:   mailer,
 		jwtTTL:   jwtTTL,
 	}
 }
@@ -146,8 +150,12 @@ func (s *authService) ForgotPassword(ctx context.Context, input domain.ForgotPas
 		return "", fmt.Errorf("authService.ForgotPassword update token: %w", err)
 	}
 
-	// In a full application, you'd send an email here.
-	// We return resetToken so your notification service or caller can deliver it.
+	if err := s.mailer.SendPasswordResetEmail(ctx, user.Email, resetToken); err != nil {
+		// Log email failure but don't crash the request
+		logger.DebugLogger(err)
+	}
+
+	// Return resetToken so your notification service or caller can deliver it.
 	return resetToken, nil
 }
 

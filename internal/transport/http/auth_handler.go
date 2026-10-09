@@ -5,11 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/ednanf/school-api/internal/domain"
 	logger "github.com/ednanf/school-api/internal/pkg/loggers"
+	"github.com/ednanf/school-api/internal/pkg/ratelimit"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
+	"golang.org/x/time/rate"
 )
 
 type authHandler struct {
@@ -27,12 +30,19 @@ func NewAuthHandler(service domain.AuthService, validate *validator.Validate) *a
 func (h *authHandler) Routes(tokenService domain.TokenService) chi.Router {
 	r := chi.NewRouter()
 
-	// Public auth routes
-	r.Post("/login", h.Login)
-	r.Post("/forgot-password", h.ForgotPassword)
-	r.Post("/reset-password", h.ResetPassword)
+	// Create rate limiter instances from internal/pkg/ratelimit
+	// 5 requests per minute (1 token every 12 seconds, burst capacity of 5)
+	loginLimiter := ratelimit.NewIPRateLimiter(rate.Every(12*time.Second), 5)
 
-	// Protected auth routes (requires valid JWT)
+	// 3 requests per minute (1 token every 20 seconds, burst capacity of 3)
+	forgotPasswordLimiter := ratelimit.NewIPRateLimiter(rate.Every(20*time.Second), 3)
+
+	// Attach RateLimitMiddleware to sensitive public routes
+	r.With(RateLimitMiddleware(loginLimiter)).Post("/login", h.Login)
+	r.With(RateLimitMiddleware(forgotPasswordLimiter)).Post("/forgot-password", h.ForgotPassword)
+	r.With(RateLimitMiddleware(loginLimiter)).Post("/reset-password", h.ResetPassword)
+
+	// Protected auth routes (Already guarded by AuthMiddleware)
 	r.Group(func(r chi.Router) {
 		r.Use(AuthMiddleware(tokenService))
 		r.Post("/change-password", h.ChangePassword)

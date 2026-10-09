@@ -2,12 +2,20 @@ package http
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"slices"
 	"strings"
 
 	"github.com/ednanf/school-api/internal/domain"
+	"github.com/ednanf/school-api/internal/pkg/ratelimit"
 )
+
+/*
+===========================
+A U T H E N T I C A T I O N
+===========================
+*/
 
 // Declare the context key
 type contextKey string
@@ -67,6 +75,32 @@ func RequireRole(roles ...domain.UserRole) func(http.Handler) http.Handler {
 
 			if !hasRole {
 				sendError(w, http.StatusForbidden, "Forbidden: insufficient permissions", nil)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+/*
+========================
+R A T E  L I M I T I N G
+========================
+*/
+
+func RateLimitMiddleware(limiter *ratelimit.IPRateLimiter) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Extract IP by stripping the port number (e.g. "127.0.0.1:50950" -> "127.0.0.1")
+			ip, _, err := net.SplitHostPort(r.RemoteAddr)
+			if err != nil {
+				// Fallback if RemoteAddr doesn't contain a port (e.g. testing setups)
+				ip = r.RemoteAddr
+			}
+
+			if !limiter.GetLimiter(ip).Allow() {
+				sendError(w, http.StatusTooManyRequests, "Too many requests. Please try again later.", nil)
 				return
 			}
 

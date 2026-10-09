@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/ednanf/school-api/internal/domain"
 	"github.com/ednanf/school-api/internal/pkg/hasher"
+	"github.com/ednanf/school-api/internal/pkg/mailer"
 	"github.com/ednanf/school-api/internal/pkg/token"
 	"github.com/ednanf/school-api/internal/repository"
 	"github.com/ednanf/school-api/internal/service"
@@ -42,6 +44,11 @@ func main() {
 		log.Fatal("[FATAL] JWT_SECRET environment variable is missing")
 	}
 
+	// Read MailPit secrets from environment
+	mailHost := os.Getenv("MAILPIT_HOST")
+	mailPortStr := os.Getenv("MAILPIT_PORT")
+	mailFrom := os.Getenv("MAIL_FROM")
+
 	// Database DSN (Data Source Name)
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", dbUsername, dbPassword, dbHost, dbPort, dbName)
 
@@ -63,6 +70,14 @@ func main() {
 
 	// Initialize validator to be passed to handlers
 	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	// Initialize MailPit service
+	mailPort := 1025 // Default Mailpit SMTP port
+	if p, err := strconv.Atoi(mailPortStr); err == nil {
+		mailPort = p
+	}
+
+	mailService := mailer.NewMailpitService(mailHost, mailPort, mailFrom)
 
 	// Middlewares
 	r.Use(middleware.RequestID)
@@ -109,7 +124,7 @@ func main() {
 
 	jwtIssuer := "school-api"
 	tokenService := token.NewJWTService(jwtSecret, jwtIssuer)
-	authService := service.NewAuthService(userRepo, hasher, tokenService, 24*time.Hour)
+	authService := service.NewAuthService(userRepo, hasher, tokenService, mailService, 24*time.Hour)
 	authHandler := transportHttp.NewAuthHandler(authService, validate)
 
 	// Mount the routes under a versioned API prefix
