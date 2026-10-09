@@ -21,6 +21,8 @@ type UserRepository interface {
 	List(ctx context.Context, limit, offset int) ([]User, int, error)
 	Update(ctx context.Context, u *User) error
 	Delete(ctx context.Context, id int) error
+
+	GetByPasswordResetToken(ctx context.Context, token string) (*User, error) // Added for password reset - used in Auth service layer
 }
 
 type UserService interface {
@@ -47,6 +49,18 @@ type User struct {
 	LastLoginAt          *time.Time `json:"last_login_at" db:"last_login_at"`
 	CreatedAt            time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt            time.Time  `json:"updated_at" db:"updated_at"`
+}
+
+// ToResponse converts a User entity into a sanitized UserResponse struct
+func (u *User) ToResponse() UserResponse {
+	return UserResponse{
+		ID:       u.ID,
+		StaffID:  u.StaffID,
+		Username: u.Username,
+		Email:    u.Email,
+		Role:     u.Role,
+		IsActive: u.IsActive,
+	}
 }
 
 // CreateUserInput carries payload fields for POST /users (including plain password for validation)

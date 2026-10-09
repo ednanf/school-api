@@ -156,3 +156,23 @@ func (r *userRepo) Delete(ctx context.Context, id int) error {
 
 	return nil
 }
+
+// GetByPasswordResetToken finds a row that matches the temporary token. This is used in Auth service layer
+func (r *userRepo) GetByPasswordResetToken(ctx context.Context, token string) (*domain.User, error) {
+	query := `
+		SELECT
+			id, staff_id, username, email, password_hash,
+			password_reset_token, password_token_expires,
+			role, is_active, last_login_at, created_at, updated_at
+		FROM users
+		WHERE password_reset_token = ?
+	`
+	var u domain.User
+	if err := r.db.GetContext(ctx, &u, query, token); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("userRepo.GetByPasswordResetToken: %w", domain.ErrNotFound)
+		}
+		return nil, fmt.Errorf("userRepo.GetByPasswordResetToken execute: %w", err)
+	}
+	return &u, nil
+}

@@ -4,9 +4,14 @@ import "errors"
 
 var (
 	// Important to decouple SQL from layers - eliminating the necessity of importing for sql.ErrNoRows
-	ErrNotFound              = errors.New("resource not found")
-	ErrUserNotFound          = errors.New("user not found")
+	ErrNotFound = errors.New("resource not found")
+
+	ErrUserNotFound = errors.New("user not found")
+	ErrUserInactive = errors.New("user account is deactivated")
+
 	ErrEmailAlreadyExists    = errors.New("email already in use")
 	ErrUsernameAlreadyExists = errors.New("username already in use")
-	ErrInvalidCredentials    = errors.New("invalid email or password")
+
+	ErrInvalidToken       = errors.New("invalid or expired token")
+	ErrInvalidCredentials = errors.New("invalid email or password")
 )

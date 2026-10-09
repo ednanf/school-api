@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -13,7 +14,9 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 
+	"github.com/ednanf/school-api/internal/domain"
 	"github.com/ednanf/school-api/internal/pkg/hasher"
+	"github.com/ednanf/school-api/internal/pkg/token"
 	"github.com/ednanf/school-api/internal/repository"
 	"github.com/ednanf/school-api/internal/service"
 	transportHttp "github.com/ednanf/school-api/internal/transport/http"
@@ -32,6 +35,12 @@ func main() {
 	dbHost := os.Getenv("DB_HOST")
 	dbPort := os.Getenv("DB_PORT")
 	dbName := os.Getenv("DB_NAME")
+
+	// Read JWT secret from environment
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("[FATAL] JWT_SECRET environment variable is missing")
+	}
 
 	// Database DSN (Data Source Name)
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", dbUsername, dbPassword, dbHost, dbPort, dbName)
@@ -56,14 +65,11 @@ func main() {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	// Middlewares
-	// RequestID injects a unique ID into each request for tracing
 	r.Use(middleware.RequestID)
-	// Logger prints request logs to the console
 	r.Use(middleware.Logger)
-	// Recoverer catches panics so the server doesn't crash from a single bad request
 	r.Use(middleware.Recoverer)
 
-	// Initialize repository (struct that encapsulates all database access logic) and handlers
+	// Initialize repositories, services, and handlers
 	studentRepo := repository.NewStudentRepository(db)
 	studentService := service.NewStudentService(studentRepo)
 	studentHandler := transportHttp.NewStudentHandler(studentService, validate)
@@ -101,17 +107,36 @@ func main() {
 	userService := service.NewUserService(userRepo, hasher)
 	userHandler := transportHttp.NewUserHandler(userService, validate)
 
+	jwtIssuer := "school-api"
+	tokenService := token.NewJWTService(jwtSecret, jwtIssuer)
+	authService := service.NewAuthService(userRepo, hasher, tokenService, 24*time.Hour)
+	authHandler := transportHttp.NewAuthHandler(authService, validate)
+
 	// Mount the routes under a versioned API prefix
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Mount("/students", studentHandler.StudentRoutes())
-		r.Mount("/classes", classHandler.ClassRoutes())
-		r.Mount("/subjects", subjectHandler.SubjectRoutes())
-		r.Mount("/teachers", teacherHandler.TeacherRoutes())
-		r.Mount("/teacher_assignments", teacherAssignmentHandler.TeacherAssignmentRoutes())
-		r.Mount("/departments", departmentHandler.DepartmentRoutes())
-		r.Mount("/staff_positions", staffPositionHandler.StaffPositionRoutes())
-		r.Mount("/staff", staffHandler.StaffRoutes())
-		r.Mount("/users", userHandler.UserRoutes())
+		// Mount ALL auth endpoints on /auth once
+		r.Mount("/auth", authHandler.Routes(tokenService))
+
+		// Protected Resource Routes (Requires valid JWT)
+		r.Group(func(r chi.Router) {
+			r.Use(transportHttp.AuthMiddleware(tokenService))
+
+			// Admin-only user management
+			r.Group(func(r chi.Router) {
+				r.Use(transportHttp.RequireRole(domain.RoleAdmin))
+				r.Mount("/users", userHandler.UserRoutes())
+			})
+
+			// Standard authenticated resource endpoints
+			r.Mount("/students", studentHandler.StudentRoutes())
+			r.Mount("/classes", classHandler.ClassRoutes())
+			r.Mount("/subjects", subjectHandler.SubjectRoutes())
+			r.Mount("/teachers", teacherHandler.TeacherRoutes())
+			r.Mount("/teacher_assignments", teacherAssignmentHandler.TeacherAssignmentRoutes())
+			r.Mount("/departments", departmentHandler.DepartmentRoutes())
+			r.Mount("/staff_positions", staffPositionHandler.StaffPositionRoutes())
+			r.Mount("/staff", staffHandler.StaffRoutes())
+		})
 	})
 
 	log.Printf("[SYSTEM] Server running on port %s...", port)
