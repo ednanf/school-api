@@ -69,7 +69,7 @@ type CreateUserInput struct {
 	Username string   `json:"username" validate:"required,min=3,max=50"`
 	Email    string   `json:"email" validate:"required,email"`
 	Password string   `json:"password" validate:"required,min=8"`
-	Role     UserRole `json:"role" validate:"required,oneof=admin staff teacher"`
+	Role     UserRole `json:"role" validate:"required,oneof=admin staff teacher"` // Can be expanded according to the docs in the future
 	IsActive bool     `json:"is_active" validate:"boolean"`
 }
 
@@ -78,7 +78,7 @@ type PatchUserInput struct {
 	StaffID  *int      `json:"staff_id" validate:"omitempty"`
 	Username *string   `json:"username" validate:"omitempty,min=3,max=50"`
 	Email    *string   `json:"email" validate:"omitempty,email"`
-	Role     *UserRole `json:"role" validate:"omitempty,oneof=admin staff teacher"`
+	Role     *UserRole `json:"role" validate:"omitempty,oneof=admin staff teacher"` // Ensure this is the same from CreateUserInput
 	IsActive *bool     `json:"is_active" validate:"omitempty"`
 }
 

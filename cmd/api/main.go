@@ -25,12 +25,14 @@ import (
 )
 
 func main() {
+	// Load environment variables
 	err := godotenv.Load()
 	if err != nil {
 		fmt.Println("[ERROR]", err)
 		return
 	}
 
+	// Read server secrets from environment
 	port := os.Getenv("API_PORT")
 	dbUsername := os.Getenv("DB_USER")
 	dbPassword := os.Getenv("DB_PASSWORD")
