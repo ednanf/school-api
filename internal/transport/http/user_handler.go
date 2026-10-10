@@ -64,14 +64,7 @@ func (h *userHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Response payload is a separate struct from User, to avoid leaking credentials
-	response := domain.UserResponse{
-		ID:       user.ID,
-		StaffID:  user.StaffID,
-		Username: user.Username,
-		Email:    user.Email,
-		Role:     user.Role,
-		IsActive: user.IsActive,
-	}
+	response := user.ToResponse()
 
 	sendSuccess(w, http.StatusCreated, "User created successfully", response)
 }
@@ -192,14 +185,7 @@ func (h *userHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Response uses UserReponse instead of User to avoid password leakage
-	response := domain.UserResponse{
-		ID:       updatedUser.ID,
-		StaffID:  updatedUser.StaffID,
-		Username: updatedUser.Username,
-		Email:    updatedUser.Email,
-		Role:     updatedUser.Role,
-		IsActive: updatedUser.IsActive,
-	}
+	response := updatedUser.ToResponse()
 
 	sendSuccess(w, http.StatusOK, "User updated successfully", response)
 }
