@@ -73,7 +73,6 @@ type CreateUserInput struct {
 	Email    string   `json:"email" validate:"required,email"`
 	Password string   `json:"password" validate:"required,min=8"`
 	Role     UserRole `json:"role" validate:"required,oneof=super_admin admin staff"` // Can be expanded according to the docs in the future
-	IsActive bool     `json:"is_active" validate:"boolean"`
 }
 
 // PatchUserInput handles optional updates for PATCH /users/{id}

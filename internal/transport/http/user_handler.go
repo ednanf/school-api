@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/ednanf/school-api/internal/domain"
+	logger "github.com/ednanf/school-api/internal/pkg/loggers"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 )
@@ -36,6 +37,7 @@ func (h *userHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	var input domain.CreateUserInput
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		logger.DebugLogger(err)
 		sendError(w, http.StatusBadRequest, "Invalid JSON payload", nil)
 		return
 	}
@@ -55,7 +57,6 @@ func (h *userHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		Username: input.Username,
 		Email:    input.Email,
 		Role:     input.Role,
-		IsActive: input.IsActive,
 	}
 
 	if err := h.service.Create(r.Context(), &user, input.Password); err != nil {
