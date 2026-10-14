@@ -1,0 +1,3811 @@
+openapi: 3.0.3
+info:
+  title: School Management API
+  description: |
+    A RESTful API for managing school operations including students, teachers, classes, subjects, staff, departments, and authentication.
+    
+    ## Base URL
+    All endpoints are prefixed with `/api/v1`
+    
+    ## Authentication
+    Most endpoints require JWT authentication via Bearer token. Include the token in the Authorization header:
+    ```
+    Authorization: Bearer <your_jwt_token>
+    ```
+    
+    ## Response Format
+    All responses follow a standard envelope format:
+    - Success responses: `{"status": "success", "message"?: "...", "data"?: {...}, "meta"?: {...}}`
+    - Error responses: `{"status": "error", "message": "...", "details"?: {...}}`
+    
+    ## Pagination
+    List endpoints support pagination via query parameters `page` and `limit`. Paginated responses include `meta` with page, limit, count, total_items, and total_pages.
+    
+    ## Validation
+    Validation errors return HTTP 422 with field-level details in the `details` field.
+    
+    ## Rate Limiting
+    Sensitive auth endpoints (login, forgot-password, reset-password, activate) are rate-limited by IP address.
+  version: 1.0.0
+  contact:
+    name: API Support
+  license:
+    name: License
+    url: https://github.com/ednanf/school-api/blob/main/LICENSE
+
+tags:
+  - name: Auth
+    description: Authentication and user account management
+  - name: Users
+    description: User management (admin only)
+  - name: Students
+    description: Student records and management
+  - name: Classes
+    description: Class/cohort management
+  - name: Subjects
+    description: Academic subjects management
+  - name: Teachers
+    description: Teacher records and management
+  - name: Teacher Assignments
+    description: Teacher-subject-class assignment mappings
+  - name: Departments
+    description: Department management
+  - name: Staff Positions
+    description: Staff position/job title management
+  - name: Staff
+    description: Staff member records and management
+
+servers:
+  - url: /api/v1
+    description: API Version 1
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from login endpoint
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          enum: [error]
+          example: error
+        message:
+          type: string
+          example: Error message
+        details:
+          type: object
+          nullable: true
+          example: {"field": "validation error"}
+
+    SuccessResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [success]
+          example: success
+        message:
+          type: string
+          nullable: true
+          example: Operation successful
+        data:
+          type: object
+          nullable: true
+        meta:
+          $ref: '#/components/schemas/PaginatedMeta'
+          nullable: true
+
+    PaginatedMeta:
+      type: object
+      required:
+        - page
+        - limit
+        - count
+        - total_items
+        - total_pages
+      properties:
+        page:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 1
+        limit:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 10
+        count:
+          type: integer
+          format: int32
+          description: Number of items returned in current page
+          example: 5
+        total_items:
+          type: integer
+          format: int32
+          description: Total number of items across all pages
+          example: 50
+        total_pages:
+          type: integer
+          format: int32
+          description: Total number of pages
+          example: 5
+
+    PaginatedResponse:
+      type: object
+      required:
+        - status
+        - data
+        - meta
+      properties:
+        status:
+          type: string
+          enum: [success]
+          example: success
+        data:
+          type: array
+          items:
+            type: object
+        meta:
+          $ref: '#/components/schemas/PaginatedMeta'
+
+    BulkMeta:
+      type: object
+      required:
+        - count
+        - total
+      properties:
+        count:
+          type: integer
+          format: int64
+          description: Number of items affected
+          example: 3
+        total:
+          type: integer
+          format: int64
+          description: Total number of items in request
+          example: 3
+
+    BulkResult:
+      type: object
+      required:
+        - items
+        - meta
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+        meta:
+          $ref: '#/components/schemas/BulkMeta'
+
+    # Auth schemas
+    LoginInput:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          example: admin@school.edu
+        password:
+          type: string
+          minLength: 1
+          example: password123
+
+    LoginResponse:
+      type: object
+      required:
+        - token
+        - user
+      properties:
+        token:
+          type: string
+          description: JWT bearer token
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        user:
+          $ref: '#/components/schemas/UserResponse'
+
+    ChangePasswordInput:
+      type: object
+      required:
+        - current_password
+        - new_password
+      properties:
+        current_password:
+          type: string
+          minLength: 1
+          example: oldpassword123
+        new_password:
+          type: string
+          minLength: 8
+          example: newpassword123
+
+    ForgotPasswordInput:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          example: user@school.edu
+
+    ResetPasswordInput:
+      type: object
+      required:
+        - token
+        - new_password
+      properties:
+        token:
+          type: string
+          minLength: 1
+          example: reset-token-uuid
+        new_password:
+          type: string
+          minLength: 8
+          example: newpassword123
+
+    ActivateAccountRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          minLength: 1
+          example: activation-token
+
+    # User schemas
+    UserRole:
+      type: string
+      enum: [super_admin, admin, staff]
+      example: admin
+
+    User:
+      type: object
+      required:
+        - id
+        - username
+        - email
+        - role
+        - is_active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        staff_id:
+          type: integer
+          format: int32
+          nullable: true
+          example: 100
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          example: johndoe
+        email:
+          type: string
+          format: email
+          example: john@school.edu
+        password_hash:
+          type: string
+          writeOnly: true
+        role:
+          $ref: '#/components/schemas/UserRole'
+        is_active:
+          type: boolean
+          example: true
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UserResponse:
+      type: object
+      required:
+        - id
+        - username
+        - email
+        - role
+        - is_active
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        staff_id:
+          type: integer
+          format: int32
+          nullable: true
+          example: 100
+        username:
+          type: string
+          example: johndoe
+        email:
+          type: string
+          format: email
+          example: john@school.edu
+        role:
+          $ref: '#/components/schemas/UserRole'
+        is_active:
+          type: boolean
+          example: true
+
+    CreateUserInput:
+      type: object
+      required:
+        - username
+        - email
+        - password
+        - role
+      properties:
+        staff_id:
+          type: integer
+          format: int32
+          nullable: true
+          minimum: 1
+          example: 100
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          example: johndoe
+        email:
+          type: string
+          format: email
+          example: john@school.edu
+        password:
+          type: string
+          minLength: 8
+          example: password123
+        role:
+          $ref: '#/components/schemas/UserRole'
+
+    PatchUserInput:
+      type: object
+      properties:
+        staff_id:
+          type: integer
+          format: int32
+          nullable: true
+          minimum: 1
+          example: 100
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          example: johndoe
+        email:
+          type: string
+          format: email
+          example: john@school.edu
+        role:
+          $ref: '#/components/schemas/UserRole'
+        is_active:
+          type: boolean
+          example: true
+
+    # Student schemas
+    ClassSummary:
+      type: object
+      required:
+        - id
+        - grade
+        - letter
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        grade:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 9
+          example: 5
+        letter:
+          type: string
+          enum: [A, B, C, D]
+          example: A
+
+    Student:
+      type: object
+      required:
+        - id
+        - first_name
+        - last_name
+        - email
+        - class_id
+        - is_active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 100
+        first_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: John
+        last_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: Smith
+        email:
+          type: string
+          format: email
+          example: john.smith@school.edu
+        class_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 1
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PopulatedStudent:
+      type: object
+      required:
+        - id
+        - first_name
+        - last_name
+        - email
+        - class
+        - is_active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 100
+        first_name:
+          type: string
+          example: John
+        last_name:
+          type: string
+          example: Smith
+        email:
+          type: string
+          format: email
+          example: john.smith@school.edu
+        class:
+          $ref: '#/components/schemas/ClassSummary'
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateStudentInput:
+      type: object
+      required:
+        - first_name
+        - last_name
+        - email
+        - class_id
+        - is_active
+      properties:
+        first_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: John
+        last_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: Smith
+        email:
+          type: string
+          format: email
+          example: john.smith@school.edu
+        class_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 1
+        is_active:
+          type: boolean
+          example: true
+
+    PatchStudentInput:
+      type: object
+      properties:
+        first_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: John
+        last_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: Smith
+        email:
+          type: string
+          format: email
+          example: john.smith@school.edu
+        class_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 1
+        is_active:
+          type: boolean
+          example: true
+
+    BulkCreateStudentInput:
+      type: object
+      required:
+        - students
+      properties:
+        students:
+          type: array
+          minItems: 1
+          maxItems: 2000
+          items:
+            $ref: '#/components/schemas/CreateStudentInput'
+
+    BulkDeleteStudentInput:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: integer
+            format: int32
+            minimum: 1
+          example: [100, 101, 102]
+
+    BulkUpdateStudentItem:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 100
+        first_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: John
+        last_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: Smith
+        email:
+          type: string
+          format: email
+          example: john.smith@school.edu
+        class_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 1
+        is_active:
+          type: boolean
+          example: true
+
+    BulkUpdateStudentInput:
+      type: object
+      required:
+        - students
+      properties:
+        students:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/BulkUpdateStudentItem'
+
+    BulkUpdateClassInput:
+      type: object
+      required:
+        - student_ids
+        - class_id
+      properties:
+        student_ids:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items:
+            type: integer
+            format: int32
+            minimum: 1
+        class_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 2
+
+    # Class schemas
+    Class:
+      type: object
+      required:
+        - id
+        - grade
+        - letter
+        - is_active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        grade:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 9
+          example: 5
+        letter:
+          type: string
+          enum: [A, B, C, D]
+          example: A
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateClassInput:
+      type: object
+      required:
+        - grade
+        - letter
+        - is_active
+      properties:
+        grade:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 9
+          example: 5
+        letter:
+          type: string
+          enum: [A, B, C, D]
+          example: A
+        is_active:
+          type: boolean
+          example: true
+
+    PatchClassInput:
+      type: object
+      properties:
+        grade:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 9
+          example: 5
+        letter:
+          type: string
+          enum: [A, B, C, D]
+          example: A
+        is_active:
+          type: boolean
+          example: true
+
+    # Subject schemas
+    Subject:
+      type: object
+      required:
+        - id
+        - name
+        - is_active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: Mathematics
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateSubjectInput:
+      type: object
+      required:
+        - name
+        - is_active
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: Mathematics
+        is_active:
+          type: boolean
+          example: true
+
+    PatchSubjectInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: Mathematics
+        is_active:
+          type: boolean
+          example: true
+
+    # Teacher schemas
+    Teacher:
+      type: object
+      required:
+        - id
+        - first_name
+        - last_name
+        - email
+        - is_active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 100
+        first_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: John
+        last_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: Doe
+        email:
+          type: string
+          format: email
+          example: john.doe@school.edu
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateTeacherInput:
+      type: object
+      required:
+        - first_name
+        - last_name
+        - email
+        - is_active
+      properties:
+        first_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: John
+        last_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: Doe
+        email:
+          type: string
+          format: email
+          example: john.doe@school.edu
+        is_active:
+          type: boolean
+          example: true
+
+    PatchTeacherInput:
+      type: object
+      properties:
+        first_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: John
+        last_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: Doe
+        email:
+          type: string
+          format: email
+          example: john.doe@school.edu
+        is_active:
+          type: boolean
+          example: true
+
+    # Teacher Assignment schemas
+    TeacherSummary:
+      type: object
+      required:
+        - id
+        - first_name
+        - last_name
+        - email
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 100
+        first_name:
+          type: string
+          example: John
+        last_name:
+          type: string
+          example: Doe
+        email:
+          type: string
+          format: email
+          example: john.doe@school.edu
+
+    SubjectSummary:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        name:
+          type: string
+          example: Mathematics
+
+    TeacherAssignment:
+      type: object
+      required:
+        - id
+        - teacher_id
+        - class_id
+        - subject_id
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        teacher_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 100
+        class_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 1
+        subject_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 1
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PopulatedTeacherAssignment:
+      type: object
+      required:
+        - id
+        - teacher
+        - class
+        - subject
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        teacher:
+          $ref: '#/components/schemas/TeacherSummary'
+        class:
+          $ref: '#/components/schemas/ClassSummary'
+        subject:
+          $ref: '#/components/schemas/SubjectSummary'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateTeacherAssignmentInput:
+      type: object
+      required:
+        - teacher_id
+        - class_id
+        - subject_id
+      properties:
+        teacher_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 100
+        class_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 1
+        subject_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 1
+
+    PatchTeacherAssignmentInput:
+      type: object
+      properties:
+        teacher_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 100
+        class_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 1
+        subject_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 1
+
+    # Department schemas
+    Department:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: Academic Affairs
+        description:
+          type: string
+          minLength: 2
+          maxLength: 200
+          example: Curriculum design and academic coordination
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateDepartmentInput:
+      type: object
+      required:
+        - name
+        - description
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: Academic Affairs
+        description:
+          type: string
+          minLength: 2
+          maxLength: 200
+          example: Curriculum design and academic coordination
+
+    PatchDepartmentInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: Academic Affairs
+        description:
+          type: string
+          minLength: 2
+          maxLength: 200
+          example: Curriculum design and academic coordination
+
+    DepartmentSummary:
+      type: object
+      required:
+        - id
+        - name
+        - description
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        name:
+          type: string
+          example: Academic Affairs
+        description:
+          type: string
+          example: Curriculum design and academic coordination
+
+    # Staff Position schemas
+    StaffPosition:
+      type: object
+      required:
+        - id
+        - department_id
+        - title
+        - description
+        - is_active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        department_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 1
+        title:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: Principal
+        description:
+          type: string
+          minLength: 2
+          maxLength: 300
+          example: School principal role
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PopulatedStaffPosition:
+      type: object
+      required:
+        - id
+        - department
+        - title
+        - description
+        - is_active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        department:
+          $ref: '#/components/schemas/DepartmentSummary'
+        title:
+          type: string
+          example: Principal
+        description:
+          type: string
+          example: School principal role
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateStaffPositionInput:
+      type: object
+      required:
+        - department_id
+        - title
+        - description
+        - is_active
+      properties:
+        department_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 1
+        title:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: Principal
+        description:
+          type: string
+          minLength: 2
+          maxLength: 300
+          example: School principal role
+        is_active:
+          type: boolean
+          example: true
+
+    PatchStaffPositionInput:
+      type: object
+      properties:
+        department_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 1
+        title:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: Principal
+        description:
+          type: string
+          minLength: 2
+          maxLength: 300
+          example: School principal role
+        is_active:
+          type: boolean
+          example: true
+
+    # Staff schemas
+    StaffPositionSummary:
+      type: object
+      required:
+        - id
+        - department
+        - title
+        - description
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        department:
+          $ref: '#/components/schemas/DepartmentSummary'
+        title:
+          type: string
+          example: Principal
+        description:
+          type: string
+          example: School principal role
+
+    Staff:
+      type: object
+      required:
+        - id
+        - position_id
+        - first_name
+        - last_name
+        - email
+        - hire_date
+        - is_active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 100
+        position_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 1
+        first_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: Jane
+        last_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: Smith
+        email:
+          type: string
+          format: email
+          example: jane.smith@school.edu
+        hire_date:
+          type: string
+          format: date-time
+          example: 2023-09-01T00:00:00Z
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PopulatedStaff:
+      type: object
+      required:
+        - id
+        - position
+        - first_name
+        - last_name
+        - email
+        - hire_date
+        - is_active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 100
+        position:
+          $ref: '#/components/schemas/StaffPositionSummary'
+        first_name:
+          type: string
+          example: Jane
+        last_name:
+          type: string
+          example: Smith
+        email:
+          type: string
+          format: email
+          example: jane.smith@school.edu
+        hire_date:
+          type: string
+          format: date-time
+          example: 2023-09-01T00:00:00Z
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateStaffInput:
+      type: object
+      required:
+        - position_id
+        - first_name
+        - last_name
+        - email
+        - hire_date
+        - is_active
+      properties:
+        position_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 1
+        first_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: Jane
+        last_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: Smith
+        email:
+          type: string
+          format: email
+          example: jane.smith@school.edu
+        hire_date:
+          type: string
+          format: date-time
+          example: 2023-09-01T00:00:00Z
+        is_active:
+          type: boolean
+          example: true
+
+    PatchStaffInput:
+      type: object
+      properties:
+        position_id:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 1
+        first_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: Jane
+        last_name:
+          type: string
+          minLength: 2
+          maxLength: 50
+          example: Smith
+        email:
+          type: string
+          format: email
+          example: jane.smith@school.edu
+        hire_date:
+          type: string
+          format: date-time
+          example: 2023-09-01T00:00:00Z
+        is_active:
+          type: boolean
+          example: true
+
+paths:
+  # Auth endpoints
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      security: []
+      summary: Login user
+      description: Authenticate with email and password to receive a JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  message:
+                    type: string
+                    nullable: true
+                  data:
+                    $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Invalid JSON payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: User account inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/forgot-password:
+    post:
+      tags:
+        - Auth
+      security: []
+      summary: Request password reset
+      description: Sends password reset link if account exists (returns success regardless to prevent email enumeration)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordInput'
+      responses:
+        '200':
+          description: Password reset request processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid JSON payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/reset-password:
+    post:
+      tags:
+        - Auth
+      security: []
+      summary: Reset password
+      description: Reset password using reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordInput'
+      responses:
+        '200':
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid token or JSON payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/activate:
+    post:
+      tags:
+        - Auth
+      security: []
+      summary: Activate account
+      description: Activate user account using activation token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivateAccountRequest'
+      responses:
+        '200':
+          description: Account activated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid token or request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/change-password:
+    post:
+      tags:
+        - Auth
+      security:
+        - bearerAuth: []
+      summary: Change password
+      description: Change current user's password (requires authentication)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordInput'
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Invalid JSON payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Users endpoints (admin only)
+  /users:
+    get:
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      summary: List users
+      description: Retrieve paginated list of users. Requires admin role (super_admin or admin).
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      summary: Create user
+      description: Create a new user. Requires admin role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserInput'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Invalid JSON payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{id}:
+    get:
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      summary: Get user by ID
+      description: Retrieve a specific user. Requires admin role.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '200':
+          description: User retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Invalid user ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      summary: Update user
+      description: Partially update a user. Requires admin role.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchUserInput'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Invalid user ID or no updates provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      summary: Delete user
+      description: Delete a user. Requires admin role.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '204':
+          description: User deleted successfully
+        '400':
+          description: Invalid user ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Students endpoints
+  /students:
+    get:
+      tags:
+        - Students
+      security:
+        - bearerAuth: []
+      summary: List students
+      description: Retrieve paginated list of students with populated class information
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+      responses:
+        '200':
+          description: Students retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Students
+      security:
+        - bearerAuth: []
+      summary: Create student
+      description: Create a new student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStudentInput'
+      responses:
+        '201':
+          description: Student created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Student'
+        '400':
+          description: Invalid JSON payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /students/bulk:
+    post:
+      tags:
+        - Students
+      security:
+        - bearerAuth: []
+      summary: Bulk create students
+      description: Create multiple students in a single request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkCreateStudentInput'
+      responses:
+        '201':
+          description: Students created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/BulkResult'
+        '400':
+          description: Invalid JSON payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+        - Students
+      security:
+        - bearerAuth: []
+      summary: Bulk update students
+      description: Update multiple students in a single request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkUpdateStudentInput'
+      responses:
+        '200':
+          description: Students updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/BulkResult'
+        '400':
+          description: Invalid JSON payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: One or more students not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /students/bulk/class:
+    patch:
+      tags:
+        - Students
+      security:
+        - bearerAuth: []
+      summary: Bulk update student class
+      description: Reassign multiple students to a new class
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkUpdateClassInput'
+      responses:
+        '200':
+          description: Class updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/BulkMeta'
+        '400':
+          description: Invalid JSON payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Class or students not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /students/bulk/delete:
+    delete:
+      tags:
+        - Students
+      security:
+        - bearerAuth: []
+      summary: Bulk delete students
+      description: Delete multiple students in a single request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkDeleteStudentInput'
+      responses:
+        '200':
+          description: Students deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/BulkMeta'
+        '400':
+          description: Invalid JSON payload or no IDs provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /students/{id}:
+    get:
+      tags:
+        - Students
+      security:
+        - bearerAuth: []
+      summary: Get student by ID
+      description: Retrieve a specific student with populated class information
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '200':
+          description: Student retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/PopulatedStudent'
+        '400':
+          description: Invalid student ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+        - Students
+      security:
+        - bearerAuth: []
+      summary: Update student
+      description: Partially update a student
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchStudentInput'
+      responses:
+        '200':
+          description: Student updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/Student'
+        '400':
+          description: Invalid student ID or no updates provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Students
+      security:
+        - bearerAuth: []
+      summary: Delete student
+      description: Delete a student
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '204':
+          description: Student deleted successfully
+        '400':
+          description: Invalid student ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Classes endpoints
+  /classes:
+    get:
+      tags:
+        - Classes
+      security:
+        - bearerAuth: []
+      summary: List classes
+      description: Retrieve paginated list of classes
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+      responses:
+        '200':
+          description: Classes retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Classes
+      security:
+        - bearerAuth: []
+      summary: Create class
+      description: Create a new class (grade and letter)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClassInput'
+      responses:
+        '201':
+          description: Class created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Class'
+        '400':
+          description: Invalid JSON payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /classes/{id}:
+    get:
+      tags:
+        - Classes
+      security:
+        - bearerAuth: []
+      summary: Get class by ID
+      description: Retrieve a specific class
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '200':
+          description: Class retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/Class'
+        '400':
+          description: Invalid class ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Class not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+        - Classes
+      security:
+        - bearerAuth: []
+      summary: Update class
+      description: Partially update a class
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchClassInput'
+      responses:
+        '200':
+          description: Class updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/Class'
+        '400':
+          description: Invalid class ID or no updates provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Class not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Classes
+      security:
+        - bearerAuth: []
+      summary: Delete class
+      description: Delete a class
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '204':
+          description: Class deleted successfully
+        '400':
+          description: Invalid class ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Class not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /subjects:
+    get:
+      tags:
+        - Subjects
+      security:
+        - bearerAuth: []
+      summary: List subjects
+      description: Retrieve paginated list of subjects
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+      responses:
+        '200':
+          description: Subjects retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Subjects
+      security:
+        - bearerAuth: []
+      summary: Create subject
+      description: Create a new subject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSubjectInput'
+      responses:
+        '201':
+          description: Subject created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Subject'
+        '400':
+          description: Invalid JSON payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /subjects/{id}:
+    get:
+      tags:
+        - Subjects
+      security:
+        - bearerAuth: []
+      summary: Get subject by ID
+      description: Retrieve a specific subject
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '200':
+          description: Subject retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/Subject'
+        '400':
+          description: Invalid subject ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Subject not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+        - Subjects
+      security:
+        - bearerAuth: []
+      summary: Update subject
+      description: Partially update a subject
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchSubjectInput'
+      responses:
+        '200':
+          description: Subject updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/Subject'
+        '400':
+          description: Invalid subject ID or no updates provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Subject not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Subjects
+      security:
+        - bearerAuth: []
+      summary: Delete subject
+      description: Delete a subject
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '204':
+          description: Subject deleted successfully
+        '400':
+          description: Invalid subject ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Subject not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Teachers endpoints
+  /teachers:
+    get:
+      tags:
+        - Teachers
+      security:
+        - bearerAuth: []
+      summary: List teachers
+      description: Retrieve paginated list of teachers
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+      responses:
+        '200':
+          description: Teachers retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Teachers
+      security:
+        - bearerAuth: []
+      summary: Create teacher
+      description: Create a new teacher
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTeacherInput'
+      responses:
+        '201':
+          description: Teacher created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Teacher'
+        '400':
+          description: Invalid JSON payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /teachers/{id}:
+    get:
+      tags:
+        - Teachers
+      security:
+        - bearerAuth: []
+      summary: Get teacher by ID
+      description: Retrieve a specific teacher
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '200':
+          description: Teacher retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/Teacher'
+        '400':
+          description: Invalid teacher ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Teacher not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+        - Teachers
+      security:
+        - bearerAuth: []
+      summary: Update teacher
+      description: Partially update a teacher
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchTeacherInput'
+      responses:
+        '200':
+          description: Teacher updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/Teacher'
+        '400':
+          description: Invalid teacher ID or no updates provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Teacher not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Teachers
+      security:
+        - bearerAuth: []
+      summary: Delete teacher
+      description: Delete a teacher
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '204':
+          description: Teacher deleted successfully
+        '400':
+          description: Invalid teacher ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Teacher not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Teacher Assignments endpoints
+  /teacher_assignments:
+    get:
+      tags:
+        - Teacher Assignments
+      security:
+        - bearerAuth: []
+      summary: List teacher assignments
+      description: Retrieve paginated list of teacher-class-subject assignments with populated data
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+      responses:
+        '200':
+          description: Assignments retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Teacher Assignments
+      security:
+        - bearerAuth: []
+      summary: Create teacher assignment
+      description: Create a new teacher-class-subject assignment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTeacherAssignmentInput'
+      responses:
+        '201':
+          description: Assignment created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/TeacherAssignment'
+        '400':
+          description: Invalid JSON payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /teacher_assignments/{id}:
+    get:
+      tags:
+        - Teacher Assignments
+      security:
+        - bearerAuth: []
+      summary: Get teacher assignment by ID
+      description: Retrieve a specific teacher assignment with populated data
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '200':
+          description: Assignment retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/PopulatedTeacherAssignment'
+        '400':
+          description: Invalid assignment ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Assignment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+        - Teacher Assignments
+      security:
+        - bearerAuth: []
+      summary: Update teacher assignment
+      description: Partially update a teacher assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchTeacherAssignmentInput'
+      responses:
+        '200':
+          description: Assignment updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/PopulatedTeacherAssignment'
+        '400':
+          description: Invalid assignment ID or no updates provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Assignment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Teacher Assignments
+      security:
+        - bearerAuth: []
+      summary: Delete teacher assignment
+      description: Delete a teacher assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '204':
+          description: Assignment deleted successfully
+        '400':
+          description: Invalid assignment ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Assignment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Departments endpoints
+  /departments:
+    get:
+      tags:
+        - Departments
+      security:
+        - bearerAuth: []
+      summary: List departments
+      description: Retrieve paginated list of departments
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+      responses:
+        '200':
+          description: Departments retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Departments
+      security:
+        - bearerAuth: []
+      summary: Create department
+      description: Create a new department
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDepartmentInput'
+      responses:
+        '201':
+          description: Department created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Department'
+        '400':
+          description: Invalid JSON payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /departments/{id}:
+    get:
+      tags:
+        - Departments
+      security:
+        - bearerAuth: []
+      summary: Get department by ID
+      description: Retrieve a specific department
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '200':
+          description: Department retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/Department'
+        '400':
+          description: Invalid department ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Department not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+        - Departments
+      security:
+        - bearerAuth: []
+      summary: Update department
+      description: Partially update a department
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchDepartmentInput'
+      responses:
+        '200':
+          description: Department updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - data
+                properties:
+                  status:
+                    type: string
+                    enum: [success]
+                  data:
+                    $ref: '#/components/schemas/Department'
+        '400':
+          description: Invalid department ID or no updates provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Department not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Departments
+      security:
+        - bearerAuth: []
+      summary: Delete department
+      description: Delete a department
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '204':
+          description: Department deleted successfully
+        '400':
+          description: Invalid department ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Department not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /classes/{id}/students:
+    get:
+      tags:
+        - Classes
+      security:
+        - bearerAuth: []
+      summary: List students by class
+      description: Retrieve paginated list of students in a specific class
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+      responses:
+        '200':
+          description: Students retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+        '400':
+          description: Invalid class ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
