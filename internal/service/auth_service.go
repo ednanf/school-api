@@ -61,7 +61,7 @@ func (s *authService) Login(ctx context.Context, input domain.LoginInput) (user 
 
 	// Verify password hash using Argon2
 	isValid, err := s.hasher.Verify(input.Password, user.PasswordHash)
-	if err != nil || !isValid { // TODO: check if the !isValid is not inverted here
+	if err != nil || !isValid {
 		return nil, "", domain.ErrInvalidCredentials
 	}
 
