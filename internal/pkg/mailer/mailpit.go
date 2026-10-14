@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/smtp"
+	"os"
 
 	"github.com/ednanf/school-api/internal/domain"
 )
@@ -29,7 +30,8 @@ func (m *MailpitService) SendPasswordResetEmail(ctx context.Context, toEmail, re
 	mime := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
 
 	// Link points to frontend or local test URL
-	resetLink := fmt.Sprintf("http://localhost:3000/reset-password?token=%s", resetToken)
+	url := os.Getenv("MAILPIT_RESET_URL")
+	resetLink := fmt.Sprintf("%s=%s", url, resetToken)
 
 	body := fmt.Sprintf(`
 		<html>
@@ -57,7 +59,8 @@ func (m *MailpitService) SendPasswordResetEmail(ctx context.Context, toEmail, re
 
 // SendActivationEmail sends a raw HTML activation email via local Mailpit SMTP
 func (m *MailpitService) SendActivationEmail(ctx context.Context, toEmail, activationToken string) error {
-	activationLink := fmt.Sprintf("http://localhost:3000/activate?token=%s", activationToken)
+	url := os.Getenv("MAILPIT_RESET_URL")
+	activationLink := fmt.Sprintf("%s=%s", url, activationToken)
 
 	// Format MIME headers and HTML body
 	header := fmt.Sprintf("From: %s\r\n", m.fromAddr) +

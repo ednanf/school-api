@@ -3,6 +3,7 @@ package mailer
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/ednanf/school-api/internal/domain"
 	"github.com/resend/resend-go/v4"
@@ -21,7 +22,8 @@ func NewResendService(apiKey, fromAddr string) domain.Mailer {
 }
 
 func (r *ResendService) SendPasswordResetEmail(ctx context.Context, toEmail, resetToken string) error {
-	resetLink := fmt.Sprintf("http://localhost:3000/reset-password?token=%s", resetToken)
+	url := os.Getenv("RESEND_RESET_URL")
+	resetLink := fmt.Sprintf("%s=%s", url, resetToken)
 
 	htmlBody := fmt.Sprintf(`
 		<html>
@@ -52,7 +54,8 @@ func (r *ResendService) SendPasswordResetEmail(ctx context.Context, toEmail, res
 }
 
 func (r *ResendService) SendActivationEmail(ctx context.Context, toEmail, activationToken string) error {
-	activationLink := fmt.Sprintf("http://localhost:3000/activate?token=%s", activationToken)
+	url := os.Getenv("RESEND_RESET_URL")
+	activationLink := fmt.Sprintf("%s=%s", url, activationToken)
 
 	htmlBody := fmt.Sprintf(`
 		<html>
