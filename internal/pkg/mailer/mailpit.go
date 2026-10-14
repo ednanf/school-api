@@ -54,3 +54,37 @@ func (m *MailpitService) SendPasswordResetEmail(ctx context.Context, toEmail, re
 
 	return nil
 }
+
+// SendActivationEmail sends a raw HTML activation email via local Mailpit SMTP
+func (m *MailpitService) SendActivationEmail(ctx context.Context, toEmail, activationToken string) error {
+	activationLink := fmt.Sprintf("http://localhost:3000/activate?token=%s", activationToken)
+
+	// Format MIME headers and HTML body
+	header := fmt.Sprintf("From: %s\r\n", m.fromAddr) +
+		fmt.Sprintf("To: %s\r\n", toEmail) +
+		"Subject: Activate Your Account\r\n" +
+		"MIME-Version: 1.0\r\n" +
+		"Content-Type: text/html; charset=UTF-8\r\n\r\n"
+
+	body := fmt.Sprintf(`
+		<html>
+			<body>
+				<h2>Welcome to School API!</h2>
+				<p>An account has been created for you.</p>
+				<p>Please click the link below to activate your account:</p>
+				<p><a href="%s">%s</a></p>
+			</body>
+		</html>
+	`, activationLink, activationLink)
+
+	msg := []byte(header + body)
+	addr := fmt.Sprintf("%s:%d", m.host, m.port)
+
+	// Mailpit doesn't require SMTP auth in local development
+	err := smtp.SendMail(addr, nil, m.fromAddr, []string{toEmail}, msg)
+	if err != nil {
+		return fmt.Errorf("failed to send activation email via Mailpit: %w", err)
+	}
+
+	return nil
+}

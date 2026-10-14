@@ -9,9 +9,9 @@ import (
 type UserRole string
 
 const (
-	RoleAdmin   UserRole = "admin"
-	RoleStaff   UserRole = "staff"
-	RoleTeacher UserRole = "teacher"
+	RoleAdmin   UserRole = "super_admin"
+	RoleStaff   UserRole = "admin"
+	RoleTeacher UserRole = "staff"
 )
 
 type UserRepository interface {
@@ -23,6 +23,9 @@ type UserRepository interface {
 	Delete(ctx context.Context, id int) error
 
 	GetByPasswordResetToken(ctx context.Context, token string) (*User, error) // Added for password reset - used in Auth service layer
+	GetByToken(ctx context.Context, token string) (*User, error)              // Added for account activation
+
+	ExistsByRole(ctx context.Context, role string) (bool, error) // Added to seed the initial admin
 }
 
 type UserService interface {
@@ -69,7 +72,7 @@ type CreateUserInput struct {
 	Username string   `json:"username" validate:"required,min=3,max=50"`
 	Email    string   `json:"email" validate:"required,email"`
 	Password string   `json:"password" validate:"required,min=8"`
-	Role     UserRole `json:"role" validate:"required,oneof=admin staff teacher"` // Can be expanded according to the docs in the future
+	Role     UserRole `json:"role" validate:"required,oneof=super_admin admin staff"` // Can be expanded according to the docs in the future
 	IsActive bool     `json:"is_active" validate:"boolean"`
 }
 
@@ -78,7 +81,7 @@ type PatchUserInput struct {
 	StaffID  *int      `json:"staff_id" validate:"omitempty"`
 	Username *string   `json:"username" validate:"omitempty,min=3,max=50"`
 	Email    *string   `json:"email" validate:"omitempty,email"`
-	Role     *UserRole `json:"role" validate:"omitempty,oneof=admin staff teacher"` // Ensure this is the same from CreateUserInput
+	Role     *UserRole `json:"role" validate:"omitempty,oneof=super_admin admin staff"` // Ensure this is the same from CreateUserInput
 	IsActive *bool     `json:"is_active" validate:"omitempty"`
 }
 

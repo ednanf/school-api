@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	"github.com/ednanf/school-api/internal/domain"
 	"github.com/ednanf/school-api/internal/pkg/hasher"
 	"github.com/ednanf/school-api/internal/pkg/mailer"
+	"github.com/ednanf/school-api/internal/pkg/seeder"
 	"github.com/ednanf/school-api/internal/pkg/token"
 	"github.com/ednanf/school-api/internal/repository"
 	"github.com/ednanf/school-api/internal/service"
@@ -40,16 +42,27 @@ func main() {
 	dbPort := os.Getenv("DB_PORT")
 	dbName := os.Getenv("DB_NAME")
 
+	// Determine the current environment
+	env := os.Getenv("ENVIRONMENT")
+	if env == "" {
+		env = "development"
+	}
+
 	// Read JWT secret from environment
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		log.Fatal("[FATAL] JWT_SECRET environment variable is missing")
 	}
 
-	// Read MailPit secrets from environment
-	mailHost := os.Getenv("MAILPIT_HOST")
-	mailPortStr := os.Getenv("MAILPIT_PORT")
-	mailFrom := os.Getenv("MAIL_FROM")
+	// Allow EMAIL_PROVIDER override, fallback to ENVIRONMENT defaults
+	emailProvider := os.Getenv("EMAIL_PROVIDER")
+	if emailProvider == "" {
+		if env == "production" {
+			emailProvider = "resend"
+		} else {
+			emailProvider = "mailpit"
+		}
+	}
 
 	// Database DSN (Data Source Name)
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", dbUsername, dbPassword, dbHost, dbPort, dbName)
@@ -73,13 +86,35 @@ func main() {
 	// Initialize validator to be passed to handlers
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
-	// Initialize MailPit service
-	mailPort := 1025 // Default Mailpit SMTP port
-	if p, err := strconv.Atoi(mailPortStr); err == nil {
-		mailPort = p
-	}
+	// Create a variable to hold the mail service
+	var mailService domain.Mailer
 
-	mailService := mailer.NewMailpitService(mailHost, mailPort, mailFrom)
+	// Read mailing secrets from environment
+	mailFrom := os.Getenv("MAIL_FROM")
+
+	// emailProvider will be either Resend or Mailpit
+	switch emailProvider {
+	case "resend":
+		resendAPIKey := os.Getenv("RESEND_API_KEY")
+		if resendAPIKey == "" {
+			log.Fatal("[FATAL] RESEND_API_KEY is required when using Resend email provider")
+		}
+		mailService = mailer.NewResendService(resendAPIKey, mailFrom)
+		log.Println("[SYSTEM] Mailer initialized with Resend provider")
+
+	case "mailpit":
+		mailHost := os.Getenv("MAILPIT_HOST")
+		mailPortStr := os.Getenv("MAILPIT_PORT")
+		mailPort := 1025
+		if p, err := strconv.Atoi(mailPortStr); err == nil {
+			mailPort = p
+		}
+		mailService = mailer.NewMailpitService(mailHost, mailPort, mailFrom)
+		log.Printf("[SYSTEM] Mailer initialized with Mailpit provider (%s:%d)", mailHost, mailPort)
+
+	default:
+		log.Fatalf("[FATAL] Unknown email provider: %s", emailProvider)
+	}
 
 	// Middlewares
 	r.Use(middleware.RequestID)
@@ -121,7 +156,7 @@ func main() {
 
 	hasher := hasher.NewArgon2Hasher()
 	userRepo := repository.NewUserRepository(db)
-	userService := service.NewUserService(userRepo, hasher)
+	userService := service.NewUserService(userRepo, hasher, mailService)
 	userHandler := transportHttp.NewUserHandler(userService, validate)
 
 	jwtIssuer := "school-api"
@@ -157,6 +192,14 @@ func main() {
 	})
 
 	log.Printf("[SYSTEM] Server running on port %s...", port)
+
+	// Seed initial admin idempotently
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := seeder.SeedInitialAdmin(ctx, userRepo, hasher); err != nil {
+		log.Printf("[ERROR] Failed to seed initial admin: %v", err)
+	}
 
 	// Start the server
 	err = http.ListenAndServe(port, r)

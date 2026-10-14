@@ -176,3 +176,23 @@ func (r *userRepo) GetByPasswordResetToken(ctx context.Context, token string) (*
 	}
 	return &u, nil
 }
+
+func (r *userRepo) ExistsByRole(ctx context.Context, role string) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS(SELECT 1 FROM users WHERE role = ?)`
+	err := r.db.GetContext(ctx, &exists, query, role)
+	return exists, err
+}
+
+func (r *userRepo) GetByToken(ctx context.Context, token string) (*domain.User, error) {
+	var user domain.User
+	query := `SELECT * FROM users WHERE password_reset_token = ? LIMIT 1`
+	err := r.db.GetContext(ctx, &user, query, token)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, err
+	}
+	return &user, nil
+}

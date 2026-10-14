@@ -3,20 +3,24 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/ednanf/school-api/internal/domain"
+	"github.com/ednanf/school-api/internal/pkg/security"
 )
 
 type userService struct {
 	repo   domain.UserRepository
 	hasher domain.PasswordHasher
+	mailer domain.Mailer
 }
 
-func NewUserService(repo domain.UserRepository, hasher domain.PasswordHasher) domain.UserService {
+func NewUserService(repo domain.UserRepository, hasher domain.PasswordHasher, mailer domain.Mailer) domain.UserService {
 	return &userService{
 		repo:   repo,
 		hasher: hasher,
+		mailer: mailer,
 	}
 }
 
@@ -30,7 +34,18 @@ func (s *userService) Create(ctx context.Context, u *domain.User, plainPassword 
 	}
 	u.PasswordHash = hashedPassword
 
+	// Generate secure token for account activation/welcome
+	activationToken, err := security.GenerateRandomToken(32)
+	if err != nil {
+		return fmt.Errorf("userService.Create generate token: %w", err)
+	}
+
 	now := time.Now().UTC()
+	tokenExpiry := now.Add(24 * time.Hour)
+
+	u.PasswordResetToken = &activationToken
+	u.PasswordTokenExpires = &tokenExpiry
+	u.IsActive = false // Keeps account locked until they activate/verify
 	u.CreatedAt = now
 	u.UpdatedAt = now
 
@@ -38,6 +53,19 @@ func (s *userService) Create(ctx context.Context, u *domain.User, plainPassword 
 		return fmt.Errorf("userService.Create: %w", err)
 	}
 
+	// 4. Send activation / welcome email
+	if err := s.mailer.SendActivationEmail(ctx, u.Email, activationToken); err != nil {
+		// Log the error so the DB transaction isn't necessarily failed, or return an error
+		log.Printf("[ERROR] userService.Create: user created but failed to send activation email: %v", err)
+	}
+
+	return nil
+}
+
+func (s *userService) Delete(ctx context.Context, id int) error {
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return fmt.Errorf("userService.Delete: %w", err)
+	}
 	return nil
 }
 
@@ -100,11 +128,4 @@ func (s *userService) Update(ctx context.Context, id int, input domain.PatchUser
 	}
 
 	return user, nil
-}
-
-func (s *userService) Delete(ctx context.Context, id int) error {
-	if err := s.repo.Delete(ctx, id); err != nil {
-		return fmt.Errorf("userService.Delete: %w", err)
-	}
-	return nil
 }

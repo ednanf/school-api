@@ -27,6 +27,7 @@ type AuthService interface {
 	ChangePassword(ctx context.Context, userID int, input ChangePasswordInput) error
 	ForgotPassword(ctx context.Context, input ForgotPasswordInput) (string, error)
 	ResetPassword(ctx context.Context, input ResetPasswordInput) error
+	ActivateAccount(ctx context.Context, token string) error
 }
 
 // DTOs for Auth Endpoints

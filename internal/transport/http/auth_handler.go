@@ -41,6 +41,7 @@ func (h *authHandler) Routes(tokenService domain.TokenService) chi.Router {
 	r.With(RateLimitMiddleware(loginLimiter)).Post("/login", h.Login)
 	r.With(RateLimitMiddleware(forgotPasswordLimiter)).Post("/forgot-password", h.ForgotPassword)
 	r.With(RateLimitMiddleware(loginLimiter)).Post("/reset-password", h.ResetPassword)
+	r.With(RateLimitMiddleware(loginLimiter)).Post("/activate", h.Activate)
 
 	// Protected auth routes (Already guarded by AuthMiddleware)
 	r.Group(func(r chi.Router) {
@@ -187,4 +188,28 @@ func (h *authHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sendSuccess(w, http.StatusOK, "Password reset successfully", nil)
+}
+
+type ActivateAccountRequest struct {
+	Token string `json:"token" validate:"required"`
+}
+
+func (h *authHandler) Activate(w http.ResponseWriter, r *http.Request) {
+	var req ActivateAccountRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendError(w, http.StatusBadRequest, "Invalid request payload", nil)
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		sendError(w, http.StatusUnprocessableEntity, "Validation failed", err.Error())
+		return
+	}
+
+	if err := h.service.ActivateAccount(r.Context(), req.Token); err != nil {
+		sendError(w, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	sendSuccess(w, http.StatusOK, "Account activated successfully. You may now log in.", nil)
 }

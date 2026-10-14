@@ -193,3 +193,36 @@ func (s *authService) ResetPassword(ctx context.Context, input domain.ResetPassw
 
 	return nil
 }
+
+func (s *authService) ActivateAccount(ctx context.Context, token string) error {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return errors.New("activation token is required")
+	}
+
+	// 1. Fetch user by token
+	user, err := s.userRepo.GetByToken(ctx, token)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return errors.New("invalid or expired activation token")
+		}
+		return fmt.Errorf("authService.ActivateAccount: %w", err)
+	}
+
+	// 2. Validate token expiry
+	if user.PasswordTokenExpires != nil && time.Now().UTC().After(*user.PasswordTokenExpires) {
+		return errors.New("activation token has expired")
+	}
+
+	// 3. Mark active and wipe token
+	user.IsActive = true
+	user.PasswordResetToken = nil
+	user.PasswordTokenExpires = nil
+	user.UpdatedAt = time.Now().UTC()
+
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return fmt.Errorf("authService.ActivateAccount update: %w", err)
+	}
+
+	return nil
+}
