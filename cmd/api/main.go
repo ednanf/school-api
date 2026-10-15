@@ -11,11 +11,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+
 	"github.com/go-playground/validator/v10"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 
+	"github.com/ednanf/school-api/internal/config"
 	"github.com/ednanf/school-api/internal/domain"
 	"github.com/ednanf/school-api/internal/pkg/hasher"
 	"github.com/ednanf/school-api/internal/pkg/mailer"
@@ -120,6 +122,7 @@ func main() {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(config.SetupCORS())
 
 	// Initialize repositories, services, and handlers
 	studentRepo := repository.NewStudentRepository(db)
