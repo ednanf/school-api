@@ -89,6 +89,7 @@ R A T E  L I M I T I N G
 ========================
 */
 
+// RateLimitMiddleware limits request numbers by IPs stored in a map
 func RateLimitMiddleware(limiter *ratelimit.IPRateLimiter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
