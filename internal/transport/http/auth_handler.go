@@ -31,17 +31,31 @@ func (h *authHandler) Routes(tokenService domain.TokenService) chi.Router {
 	r := chi.NewRouter()
 
 	// Create rate limiter instances from internal/pkg/ratelimit
-	// 5 requests per minute (1 token every 12 seconds, burst capacity of 5)
-	loginLimiter := ratelimit.NewIPRateLimiter(rate.Every(12*time.Second), 5)
+	loginLimiter := ratelimit.NewIPRateLimiter(
+		rate.Every(12*time.Second),
+		5,
+	)
 
-	// 3 requests per minute (1 token every 20 seconds, burst capacity of 3)
-	forgotPasswordLimiter := ratelimit.NewIPRateLimiter(rate.Every(20*time.Second), 3)
+	forgotPasswordLimiter := ratelimit.NewIPRateLimiter(
+		rate.Every(20*time.Second),
+		3,
+	)
+
+	resetPasswordLimiter := ratelimit.NewIPRateLimiter(
+		rate.Every(20*time.Second),
+		3,
+	)
+
+	activateLimiter := ratelimit.NewIPRateLimiter(
+		rate.Every(20*time.Second),
+		3,
+	)
 
 	// Attach RateLimitMiddleware to sensitive public routes
 	r.With(RateLimitMiddleware(loginLimiter)).Post("/login", h.Login)
 	r.With(RateLimitMiddleware(forgotPasswordLimiter)).Post("/forgot-password", h.ForgotPassword)
-	r.With(RateLimitMiddleware(loginLimiter)).Post("/reset-password", h.ResetPassword)
-	r.With(RateLimitMiddleware(loginLimiter)).Post("/activate", h.Activate)
+	r.With(RateLimitMiddleware(resetPasswordLimiter)).Post("/reset-password", h.ResetPassword)
+	r.With(RateLimitMiddleware(activateLimiter)).Post("/activate", h.Activate)
 
 	// Protected auth routes (Already guarded by AuthMiddleware)
 	r.Group(func(r chi.Router) {
