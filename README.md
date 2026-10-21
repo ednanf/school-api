@@ -434,6 +434,6 @@ The test suite covers the rate limiter, including the case that matters most —
 
 ## License
 
-Released under the MIT License — see [LICENSE](LICENSE).
+Released under the MIT License — see [LICENSE](https://github.com/ednanf/school-api/blob/master/LICENSE).
 
 Copyright © 2026 Ednan R. Frizzera Filho.
