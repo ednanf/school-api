@@ -2,7 +2,7 @@
 | :---------------------------------- | :------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------- |
 | SUPER_ADMIN                         | System Developers / Lead IT      | Full root access. Can run migrations, manage database backups, grant ADMIN roles, and view system logs.                                |
 | ADMIN                               | Principals, Directors, Registrar | Can manage school-wide settings, create/deactivate staff accounts, modify departments, and override grades/academic records.           |
-| TEACHER                             | Instructional Staff              | Can input grades, record attendance, and view student rosters only for classes assigned to them in teacher_assignments.                |
 | STAFF                               | Secretaries, Bursar, Counselors  | General administrative access (e.g., log student attendance, issue transcripts, handle billing) without administrative system control. |
+| TEACHER (Optional future expansion) | Instructional Staff              | Can input grades, record attendance, and view student rosters only for classes assigned to them in teacher_assignments.                |
 | STUDENT (Optional future expansion) | Enrolled Students                | Read-only access to their own grades, schedule, and attendance records.                                                                |
 | PARENT (Optional future expansion)  | Parents / Guardians              | Read-only access to their linked children's grades, attendance, and fee status.                                                        |
