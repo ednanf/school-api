@@ -30,7 +30,7 @@ info:
   contact:
     name: API Support
   license:
-    name: License
+    name: MIT
     url: https://github.com/ednanf/school-api/blob/main/LICENSE
 
 tags:
